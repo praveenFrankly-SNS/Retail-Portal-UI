@@ -37,7 +37,7 @@ export function CatalogPage() {
 
   // Load categories
   useEffect(() => {
-    getCategories("amazon")
+    getCategories()
       .then(setCategories)
       .catch(err => console.warn(err));
   }, []);
@@ -53,7 +53,6 @@ export function CatalogPage() {
       sort: sortBy,
       page: currentPage,
       page_size: 12,
-      dataset: "amazon"
     })
       .then((res) => {
         setProducts(res.products);

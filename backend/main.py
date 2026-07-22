@@ -31,7 +31,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="Enterprise Search Application powered by Databricks Vector Search",
+    description="Retail AI Experience Portal — AI Product Search & Recommendation Accelerator powered by Databricks",
     docs_url=f"{settings.api_v1_prefix}/docs",
     redoc_url=f"{settings.api_v1_prefix}/redoc",
     openapi_url=f"{settings.api_v1_prefix}/openapi.json"

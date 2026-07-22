@@ -33,16 +33,6 @@ export function SearchPage() {
   const showFilters = true;
   const [sortBy, setSortBy] = useState('relevant')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [activeDataset, setActiveDataset] = useState<string>(() => localStorage.getItem('dataset_variant') || 'wands')
-
-  useEffect(() => {
-    const handleDatasetChange = (e: any) => {
-      setActiveDataset(e.detail || 'wands')
-      setPage(1)
-    }
-    window.addEventListener('datasetChanged', handleDatasetChange)
-    return () => window.removeEventListener('datasetChanged', handleDatasetChange)
-  }, [setPage])
 
   useEffect(() => {
     if (queryParam && queryParam !== query) {
@@ -51,8 +41,8 @@ export function SearchPage() {
   }, [queryParam, query, setQuery])
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['search', query, page, pageSize, filters, activeDataset],
-    queryFn: () => searchAPI.search({ query, page, page_size: pageSize, filters, dataset: activeDataset }),
+    queryKey: ['search', query, page, pageSize, filters],
+    queryFn: () => searchAPI.search({ query, page, page_size: pageSize, filters }),
     enabled: !!query,
   })
 

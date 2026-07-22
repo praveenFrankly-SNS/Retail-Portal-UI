@@ -7,6 +7,9 @@ import { CatalogPage } from '@/pages/customer/CatalogPage'
 import { CartPage } from '@/pages/customer/CartPage'
 import { RecommendationsPage } from '@/pages/customer/RecommendationsPage'
 import { ProfilePage } from '@/pages/customer/ProfilePage'
+import { DemoLabPage } from '@/pages/customer/DemoLabPage'
+import { MainLayout } from '@/components/layout/MainLayout'
+import { Sparkles } from 'lucide-react'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,43 +25,66 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/catalog" element={<CatalogPage />} />
-          <Route path="/products/:id" element={<ProductDetailPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/recommendations" element={<RecommendationsPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          {/* Demo Lab — Stage 3 */}
-          <Route path="/demo-lab" element={<DemoLabPlaceholder />} />
-          <Route path="/about" element={<AboutPlaceholder />} />
+          <Route path="/"               element={<HomePage />} />
+          <Route path="/search"         element={<SearchPage />} />
+          <Route path="/catalog"        element={<CatalogPage />} />
+          <Route path="/products/:id"   element={<ProductDetailPage />} />
+          <Route path="/cart"           element={<CartPage />} />
+          <Route path="/recommendations"element={<RecommendationsPage />} />
+          <Route path="/profile"        element={<ProfilePage />} />
+          <Route path="/demo-lab"       element={<DemoLabPage />} />
+          <Route path="/monitoring"     element={<MonitoringPlaceholder />} />
+          <Route path="/about"          element={<AboutPage />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
   )
 }
 
-// Temporary placeholders for Stage 3 pages
-function DemoLabPlaceholder() {
+function MonitoringPlaceholder() {
   return (
-    <div className="min-h-screen bg-surface-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-4xl mb-4">🧪</div>
-        <h1 className="text-xl font-semibold text-gray-900">AI Demo Lab</h1>
-        <p className="text-gray-500 mt-2">Coming in Stage 3 — Upload product → AI Processing → Cold-Start Demo</p>
+    <MainLayout showRightSidebar={false}>
+      <div className="text-center py-20">
+        <div className="w-16 h-16 rounded-2xl bg-primary-100 flex items-center justify-center mx-auto mb-4">
+          <Sparkles size={28} className="text-primary-600" />
+        </div>
+        <h1 className="text-xl font-black text-slate-900">Monitoring Dashboard</h1>
+        <p className="text-slate-500 mt-2 text-sm">System metrics, latency tracking and index health — coming soon.</p>
       </div>
-    </div>
+    </MainLayout>
   )
 }
 
-function AboutPlaceholder() {
+function AboutPage() {
   return (
-    <div className="min-h-screen bg-surface-50 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-xl font-semibold text-gray-900">Retail AI Portal</h1>
-        <p className="text-gray-500 mt-2">Powered by Databricks — AI Search + Common-Sense Recommendations</p>
+    <MainLayout showRightSidebar={false}>
+      <div className="max-w-2xl mx-auto py-12 text-center">
+        <div className="w-20 h-20 rounded-3xl bg-primary-600 flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary-200">
+          <Sparkles size={36} className="text-white" />
+        </div>
+        <h1 className="text-3xl font-black text-slate-900 mb-3">Retail AI Portal</h1>
+        <p className="text-slate-500 text-base mb-4">
+          An enterprise-grade accelerator demonstrating AI-powered Product Search and
+          Product Recommendation, built on Databricks.
+        </p>
+        <div className="grid grid-cols-2 gap-4 mt-8 text-left">
+          {[
+            { label: 'AI Search',              desc: 'Vector similarity search powered by Databricks BGE embeddings' },
+            { label: 'AI Recommendations',     desc: 'Context-aware recommendation engine on Databricks Model Serving' },
+            { label: 'Cold-Start Demo',        desc: 'Upload a product, generate embeddings, make it instantly searchable' },
+            { label: 'Real-time Context',      desc: 'Session tracking drives instant recommendation personalization' },
+          ].map(({ label, desc }) => (
+            <div key={label} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+              <p className="font-black text-slate-900 text-sm">{label}</p>
+              <p className="text-xs text-slate-500 mt-1 leading-snug">{desc}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-slate-400 mt-8">
+          Built with Databricks Vector Search · Model Serving · Foundation Model APIs · FastAPI · React
+        </p>
       </div>
-    </div>
+    </MainLayout>
   )
 }
 

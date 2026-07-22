@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     embedding_model_endpoint: str = Field(default="databricks-bge-large-en", env="EMBEDDING_MODEL_ENDPOINT")
 
     # Application Configuration
-    app_name: str = Field(default="ProductSearch Enterprise", env="APP_NAME")
+    app_name: str = Field(default="Retail AI Portal", env="APP_NAME")
     app_version: str = Field(default="1.0.0", env="APP_VERSION")
     environment: str = Field(default="development", env="ENVIRONMENT")
     debug: bool = Field(default=False, env="DEBUG")
@@ -125,10 +125,17 @@ class Settings(BaseSettings):
         if not token or token.startswith("dapi34a9e"):
             import subprocess
             import json
+            import os
+            
+            # Prefer the newer CLI binary path
+            cli_path = r"C:\Users\ADMIN\bin\databricks.exe"
+            if not os.path.exists(cli_path):
+                cli_path = "databricks"
+                
             for profile in ["praveen", "Praveen", "praveen.v.ihub@snsgroups.com", "DEFAULT"]:
                 try:
                     res = subprocess.run(
-                        ["databricks", "auth", "token", "--profile", profile],
+                        [cli_path, "auth", "token", "--profile", profile],
                         capture_output=True,
                         text=True,
                         check=True

@@ -97,16 +97,7 @@ export function NavBar() {
           </div>
         </Link>
 
-        {/* Dataset Selector */}
-        <button
-          id="dataset-selector-btn"
-          className="hidden md:flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-200 bg-gray-50
-                     text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
-        >
-          <Database size={13} className="text-gray-400" />
-          <span>Amazon (1.5k products)</span>
-          <ChevronDown size={12} className="text-gray-400" />
-        </button>
+
 
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="flex-1 max-w-2xl">
