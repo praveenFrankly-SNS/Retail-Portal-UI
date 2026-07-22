@@ -1,0 +1,174 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --nav-height: 60px;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface-50 text-gray-900 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply font-semibold;
+  }
+}
+
+@layer components {
+  /* ── Product Card ─────────────────────────────────────── */
+  .product-card {
+    @apply bg-white rounded-xl border border-gray-100 shadow-card
+           transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+
+  /* ── Button variants ─────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg
+           bg-primary-600 text-white font-medium text-sm
+           hover:bg-primary-700 active:bg-primary-800
+           transition-colors duration-150;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg
+           border border-gray-200 bg-white text-gray-700 font-medium text-sm
+           hover:bg-gray-50 active:bg-gray-100
+           transition-colors duration-150;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg
+           text-gray-600 font-medium text-sm
+           hover:bg-gray-100 active:bg-gray-200
+           transition-colors duration-150;
+  }
+
+  /* ── AI badge ────────────────────────────────────────── */
+  .ai-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           bg-accent-100 text-accent-700 text-xs font-medium;
+  }
+
+  /* ── Section heading ─────────────────────────────────── */
+  .section-heading {
+    @apply flex items-center gap-2 text-gray-900 text-lg font-semibold;
+  }
+
+  /* ── Skeleton loader ─────────────────────────────────── */
+  .skeleton {
+    @apply animate-pulse bg-gray-100 rounded;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .text-balance { text-wrap: balance; }
+
+  .shimmer-bg {
+    background: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+    background-size: 1000px 100%;
+    animation: shimmer 1.8s infinite;
+  }
+
+  /* Price display */
+  .price-main { @apply text-lg font-bold text-gray-900; }
+  .price-original { @apply text-sm text-gray-400 line-through ml-1; }
+  .price-discount { @apply text-xs font-semibold text-green-600 ml-1; }
+
+  /* Rating star */
+  .star-rating { @apply text-amber-400 text-sm font-semibold; }
+}
+
+/* Scrollbar for recommendation rows */
+.rec-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.rec-scroll::-webkit-scrollbar-track {
+  @apply bg-gray-100 rounded-full;
+}
+.rec-scroll::-webkit-scrollbar-thumb {
+  @apply bg-primary-300 rounded-full;
+}
+
+/* Focus styles */
+*:focus-visible {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+}
+
+::selection {
+  @apply bg-primary-200 text-primary-900;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Custom animations */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(
+    to right,
+    #f6f7f8 0%,
+    #edeef1 20%,
+    #f6f7f8 40%,
+    #f6f7f8 100%
+  );
+  background-size: 1000px 100%;
+}
+
+/* Focus visible styles */
+*:focus-visible {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+}
+
+/* Selection color */
+::selection {
+  @apply bg-primary-200 text-primary-900;
+}
