@@ -10,7 +10,7 @@
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Star, ShoppingCart, Heart, Share2,
   CheckCircle, Truck, RefreshCcw, Shield, Sparkles,
@@ -68,12 +68,15 @@ function RatingBar({ stars, pct }: { stars: number; pct: number }) {
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { activeCustomer, sessionContext, addViewEvent } = useUserStore();
   const addItem = useCartStore((s) => s.addItem);
 
-  const [product,      setProduct]       = useState<ProductDetail | null>(null);
-  const [prodLoading,  setProdLoading]   = useState(true);
+  const stateProduct = location.state?.product as ProductDetail | undefined;
+
+  const [product,      setProduct]       = useState<ProductDetail | null>(stateProduct || null);
+  const [prodLoading,  setProdLoading]   = useState(!stateProduct);
   const [quantity,     setQuantity]      = useState(1);
   const [activeImage,  setActiveImage]   = useState(0);
   const [activeTab,    setActiveTab]     = useState<'overview' | 'specs' | 'reviews' | 'qa'>('overview');
@@ -92,13 +95,20 @@ export function ProductDetailPage() {
   // Load product detail
   useEffect(() => {
     if (!id) return;
-    setProdLoading(true);
+    if (!stateProduct) setProdLoading(true);
     getProductDetail(id)
-      .then(setProduct)
+      .then((data) => {
+        // If data is mock (Sony) but we have a state product, keep state product.
+        if (data.product_name === 'Sony WH-1000XM5 Wireless Headphones' && stateProduct && stateProduct.product_id === id) {
+          setProduct({ ...data, ...stateProduct, specifications: data.specifications || stateProduct.specifications, reviews_summary: data.reviews_summary });
+        } else {
+          setProduct(data);
+        }
+      })
       .catch(console.warn)
       .finally(() => setProdLoading(false));
     addViewEvent(id);
-  }, [id]);
+  }, [id, stateProduct]);
 
   // Load recommendations when product or customer changes
   useEffect(() => {
@@ -141,7 +151,9 @@ export function ProductDetailPage() {
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
-  const images = product?.images?.length ? product.images : PLACEHOLDER_IMAGES;
+  const images = product?.images?.length 
+    ? product.images 
+    : (product?.image_url ? [product.image_url] : PLACEHOLDER_IMAGES);
   const discount = product?.discount_percent || (
     product?.discounted_price && product?.price
       ? Math.round((1 - product.discounted_price / product.price) * 100)
@@ -223,7 +235,7 @@ export function ProductDetailPage() {
               <img
                 src={images[activeImage] || PLACEHOLDER_IMAGES[0]}
                 alt={product.product_name}
-                className="w-full h-80 object-contain p-4"
+                className="w-full h-80 object-contain p-12"
                 onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGES[0]; }}
               />
               {product.badge && (

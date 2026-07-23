@@ -11,6 +11,7 @@ from app.core.security import sanitize_query, validate_query
 from app.core.logging import get_logger
 from app.services.databricks_service import databricks_service
 from app.services.cache_service import cache_service
+from app.models.product import ProductDTO
 
 logger = get_logger(__name__)
 
@@ -212,68 +213,32 @@ class SearchService:
         for result in page_results:
             pid = result.get("product_id") or result.get("id") or ""
             details = product_details.get(pid, {})
-
-            # Multi-alias field getters for title, price, brand, category, ratings
-            p_name = (
-                details.get("product_name")
-                or result.get("product_name")
-                or result.get("product_title")
-                or result.get("title")
-                or result.get("name")
-                or (f"Product {pid}" if pid else "Unnamed Product")
-            )
-            p_desc = (
-                details.get("description")
-                or details.get("attribute_summary")
-                or result.get("searchable_text")
-                or result.get("attribute_summary")
-                or ""
-            )
-            p_brand = (
-                details.get("brand")
-                or result.get("brand_name")
-                or result.get("brand")
-                or ""
-            )
-            p_category = (
-                details.get("category")
-                or result.get("category_path")
-                or result.get("category_hierarchy")
-                or result.get("category")
-                or ""
-            )
-            p_price = (
-                details.get("price")
-                if details.get("price") is not None
-                else _safe_float(result.get("selling_price") or result.get("price") or result.get("list_price"))
-            )
-            p_rating = (
-                details.get("avg_rating")
-                if details.get("avg_rating") is not None
-                else _safe_float(result.get("average_rating") or result.get("avg_rating") or result.get("rating"))
-            )
-            p_reviews = (
-                details.get("review_count")
-                if details.get("review_count") is not None
-                else int(result.get("review_count") or result.get("num_reviews") or 0)
-            )
-
-            enriched_results.append({
-                "product_id": pid,
-                "product_name": p_name,
-                "description": p_desc,
-                "brand": p_brand,
-                "category": p_category,
-                "price": p_price,
-                "currency": "INR",
-                "attributes": {"summary": details.get("attribute_summary") or result.get("attribute_summary") or ""},
-                "avg_rating": p_rating,
-                "review_count": p_reviews,
-                "similarity_score": result.get("similarity_score"),
-                "image_url": None,
-                "attribute_summary": details.get("attribute_summary") or result.get("attribute_summary") or "",
-                "review_summary": details.get("review_summary") or result.get("review_summary") or "",
-            })
+            
+            # Merge dictionary and populate product_id
+            combined_row = {**result, **details}
+            combined_row["product_id"] = pid
+            
+            try:
+                dto = ProductDTO.from_db_row(combined_row)
+                # Ensure the vector search similarity score is populated
+                dto.similarity_score = result.get("similarity_score")
+                dto.relevance_score = result.get("similarity_score")
+                enriched_results.append(dto.dict())
+            except Exception as e:
+                logger.error("Failed to build ProductDTO for search result", error=str(e), product_id=pid)
+                enriched_results.append({
+                    "product_id": pid,
+                    "product_name": combined_row.get("product_name") or combined_row.get("product_title") or f"Product {pid}",
+                    "brand": combined_row.get("brand") or "Generic",
+                    "brand_name": combined_row.get("brand") or "Generic",
+                    "category": combined_row.get("category_path") or "General",
+                    "category_path": combined_row.get("category_path") or "General",
+                    "price": _safe_float(combined_row.get("price") or combined_row.get("discounted_price") or 0.0),
+                    "avg_rating": _safe_float(combined_row.get("rating") or combined_row.get("average_rating") or 4.5),
+                    "review_count": int(combined_row.get("rating_count") or combined_row.get("review_count") or 0),
+                    "similarity_score": result.get("similarity_score"),
+                    "image_url": combined_row.get("image_url") or combined_row.get("img_link")
+                })
 
         # Calibrate similarity scores for realistic, differentiated scaling
         calibrated_results = _calibrate_match_scores(enriched_results, query)

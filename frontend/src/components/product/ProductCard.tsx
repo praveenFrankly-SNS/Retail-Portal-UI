@@ -133,11 +133,13 @@ export function ProductCard({ product, variant = 'grid', onInfoClick, className 
           </button>
         )}
         {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={product.product_name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+          <div className="w-full h-full flex items-center justify-center p-4">
+            <img
+              src={product.image_url}
+              alt={product.product_name}
+              className="w-1/2 h-1/2 object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-300"
+            />
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <div className="w-16 h-16 bg-gray-200 rounded-xl" />

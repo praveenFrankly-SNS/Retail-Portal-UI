@@ -35,7 +35,8 @@ export async function getRecommendations(
       });
       return data;
     } catch (err) {
-      console.warn("Recommendation API call failed, falling back to mock:", err);
+      console.error("Recommendation API call failed:", err);
+      throw err;
     }
   }
 

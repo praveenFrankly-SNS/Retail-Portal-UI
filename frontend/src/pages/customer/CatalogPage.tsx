@@ -243,7 +243,7 @@ export function CatalogPage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {products.map((product) => (
-                <div key={product.product_id} onClick={() => navigate(`/products/${product.product_id}`)} className="cursor-pointer">
+                <div key={product.product_id} onClick={() => navigate(`/products/${product.product_id}`, { state: { product } })} className="cursor-pointer">
                   <ProductCard product={product} variant="grid" />
                 </div>
               ))}

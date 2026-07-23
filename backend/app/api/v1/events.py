@@ -3,10 +3,11 @@ Customer Behavioral Events API endpoints
 """
 
 import time
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, Dict
 from app.services.databricks_service import _run_sql
+from app.services.session_service import session_service
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -23,7 +24,7 @@ class EventPayload(BaseModel):
 
 
 @router.post("")
-async def log_event(event: EventPayload):
+async def log_event(event: EventPayload, background_tasks: BackgroundTasks):
     """
     Log a customer behavioral interaction event.
     Persists event telemetry to Databricks gold.customer_event table.
@@ -48,11 +49,21 @@ async def log_event(event: EventPayload):
         ('{safe_cust_id}', '{safe_event_type}', '{safe_prod_id}', '{safe_query}', {event_time})
     """
 
-    try:
-        # Run asynchronous insert statement
-        # Note: If the customer_event table schema doesn't exist, this will trigger the except block and continue gracefully.
-        _run_sql(sql)
-        return {"status": "success", "timestamp": event_time}
-    except Exception as e:
-        logger.warning("Failed to insert event into Databricks event store, continuing gracefully", error=str(e))
-        return {"status": "logged_local_fallback", "timestamp": event_time}
+    # Process event into Redis session state
+    if event.event_type == 'SEARCH' and event.query:
+        session_service.add_recent_search(event.customer_id, event.query)
+    elif event.event_type == 'PRODUCT_VIEW' and event.product_id:
+        session_service.add_recent_view(event.customer_id, event.product_id)
+    elif event.event_type == 'ADD_TO_CART' and event.product_id:
+        session_service.add_to_cart(event.customer_id, event.product_id)
+    elif event.event_type == 'REMOVE_FROM_CART' and event.product_id:
+        session_service.remove_from_cart(event.customer_id, event.product_id)
+
+    def _safe_insert():
+        try:
+            _run_sql(sql)
+        except Exception as e:
+            logger.warning("Failed to insert event into Databricks event store, continuing gracefully", error=str(e))
+
+    background_tasks.add_task(_safe_insert)
+    return {"status": "success", "timestamp": event_time}

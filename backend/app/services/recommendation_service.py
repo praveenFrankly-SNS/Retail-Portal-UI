@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.services.session_service import session_service
 
 logger = get_logger(__name__)
 
@@ -85,7 +86,7 @@ MOCK_PRODUCTS_DATA = [
 
 class RecommendationService:
 
-    async def get_recommendations(
+    def get_recommendations(
         self,
         customer_id: str,
         surface: str,
@@ -141,6 +142,15 @@ class RecommendationService:
                 gold_schema=gold_schema
             )
 
+            # Retrieve ultra-fast live session context from Redis
+            redis_context = session_service.get_customer_context(customer_id)
+            merged_context = {
+                "recent_searches": redis_context.get("recent_searches", []),
+                "recent_views": redis_context.get("recent_views", []),
+                "cart": redis_context.get("cart", []),
+                **(session_context or {})
+            }
+
             logger.info("Executing Phase 7 recommendation pipeline", customer_id=customer_id, surface=surface)
             engine_response = generate_recommendations(
                 spark=repository,
@@ -149,7 +159,7 @@ class RecommendationService:
                 config=config,
                 current_product_id=current_product_id,
                 limit=limit,
-                session_context=session_context
+                session_context=merged_context
             )
 
             enriched_recs = []
