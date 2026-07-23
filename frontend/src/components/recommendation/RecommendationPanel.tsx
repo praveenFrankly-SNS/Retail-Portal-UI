@@ -94,7 +94,7 @@ export function RecommendationPanel({ product, onClose }: RecommendationPanelPro
               <div className="flex items-center gap-1 mt-1">
                 <Star size={11} className="text-amber-400" fill="currentColor" />
                 <span className="text-xs font-semibold text-gray-700">{product.rating}</span>
-                <span className="text-xs text-gray-400">({product.rating_count.toLocaleString()})</span>
+                <span className="text-xs text-gray-400">({(product.rating_count ?? 0).toLocaleString()})</span>
               </div>
               <p className="text-sm font-bold text-gray-900 mt-0.5">
                 ₹{(product.discounted_price ?? product.price).toLocaleString('en-IN')}

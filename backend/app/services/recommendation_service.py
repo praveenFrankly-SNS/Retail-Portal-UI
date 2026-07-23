@@ -83,7 +83,7 @@ MOCK_PRODUCTS_DATA = [
 
 
 class RecommendationService:
-    """Service to proxy requests to Databricks Model Serving for recommendations."""
+    """Service to orchestrate Phase 7 Common-Sense Recommendation Engine locally."""
 
     async def get_recommendations(
         self,
@@ -94,52 +94,125 @@ class RecommendationService:
         session_context: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """
-        Query Databricks Model Serving endpoint. Fallback to mock data if offline/unconfigured.
+        Execute Phase 7 recommendation pipeline using Databricks REST APIs for data,
+        LLM reasoning, and Vector Search indexing.
         """
         start_time = time.time()
         
         # 1. Fallback check if credentials are missing
-        if not settings.is_databricks_configured or not settings.recommendation_endpoint:
-            logger.warning("Databricks model serving not configured — falling back to mock recommendations")
+        if not settings.is_databricks_configured:
+            logger.warning("Databricks credentials missing — falling back to mock recommendations")
             return self._generate_fallback(customer_id, surface, limit)
 
-        url = f"{settings.databricks_url}/api/2.0/serving-endpoints/{settings.recommendation_endpoint}/invocations"
-        headers = {
-            "Authorization": f"Bearer {settings.resolved_token}",
-            "Content-Type": "application/json",
-        }
+        # 2. Add bundle to path and import engine components
+        import os
+        import sys
+        from pathlib import Path
         
-        payload = {
-            "dataframe_records": [
-                {
-                    "customer_id": customer_id,
-                    "surface": surface,
-                    "current_product_id": current_product_id,
-                    "limit": limit,
-                    "session_context": session_context or {}
-                }
-            ]
-        }
-
-        try:
-            # Query the serving endpoint
-            resp = requests.post(url, headers=headers, json=payload, timeout=8.0)
-            resp.raise_for_status()
-            result = resp.json()
+        bundle_path = Path("E:/PraveenFrankly/Databricks/Accelerators/Retail/Product-recommendation/ProductRecommendation-Bundle")
+        if str(bundle_path) not in sys.path:
+            sys.path.insert(0, str(bundle_path))
             
-            # Databricks endpoint returns list of predictions in "predictions" key
-            predictions = result.get("predictions")
-            if predictions and len(predictions) > 0:
-                pred = predictions[0]
-                pred["latency_ms"] = int((time.time() - start_time) * 1000)
-                logger.info("Recommendations retrieved from Databricks serving", customer_id=customer_id, surface=surface, latency_ms=pred["latency_ms"])
-                return pred
-            else:
-                logger.warning("Databricks serving returned empty predictions array")
-                return self._generate_fallback(customer_id, surface, limit)
-
+        try:
+            from src.config.loader import AcceleratorConfig
+            from src.recommendation.repositories.sql_customer_context_repository import SqlCustomerContextRepository
+            from src.recommendation.recommendation_service import generate_recommendations
+            
+            # 3. Setup credentials for downstream REST / SDK clients
+            clean_host = settings.databricks_host.replace("https://", "").replace("http://", "")
+            os.environ["DATABRICKS_HOST"] = clean_host
+            os.environ["DATABRICKS_TOKEN"] = settings.resolved_token
+            
+            # Load bundle configuration
+            config = AcceleratorConfig()
+            warehouse_id = settings.sql_warehouse_id or config.serving.get("warehouse_id", "")
+            catalog = config.catalog
+            gold_schema = config.gold_schema
+            
+            # Initialize SQL context repository (Statement execution layer)
+            repository = SqlCustomerContextRepository(
+                databricks_host=f"https://{clean_host}",
+                token=settings.resolved_token,
+                warehouse_id=warehouse_id,
+                catalog=catalog,
+                gold_schema=gold_schema
+            )
+            
+            # 4. Generate recommendations using Phase 7 orchestration engine
+            logger.info("Executing Phase 7 recommendation pipeline locally", customer_id=customer_id, surface=surface)
+            engine_response = generate_recommendations(
+                spark=repository,
+                customer_id=customer_id,
+                surface=surface,
+                config=config,
+                current_product_id=current_product_id,
+                limit=limit,
+                session_context=session_context
+            )
+            
+            # 5. Enrich candidates with price/image/rating fallbacks for premium React rendering
+            enriched_recs = []
+            for rec in engine_response.get("recommendations", []):
+                # Retrieve price from metadata, price_tier, or fallback
+                price_tier = rec.get("price_tier", "MEDIUM").upper()
+                if rec.get("price"):
+                    price = float(rec["price"])
+                else:
+                    if "LOW" in price_tier:
+                        price = 1499
+                    elif "HIGH" in price_tier:
+                        price = 24990
+                    else:
+                        price = 7699
+                
+                # Fetch image from catalog, or generate beautiful Unsplash electronics images
+                raw_image = rec.get("image_url", "")
+                if raw_image and raw_image.startswith("http"):
+                    img = raw_image
+                else:
+                    prod_name = rec.get("product_name", "").lower()
+                    if "keyboard" in prod_name:
+                        img = "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&h=400&fit=crop"
+                    elif "headphone" in prod_name or "earphone" in prod_name or "audio" in prod_name:
+                        img = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop"
+                    elif "monitor" in prod_name or "display" in prod_name or "screen" in prod_name:
+                        img = "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&h=400&fit=crop"
+                    elif "stand" in prod_name:
+                        img = "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&h=400&fit=crop"
+                    elif "hub" in prod_name or "adapter" in prod_name or "dock" in prod_name:
+                        img = "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop"
+                    else:
+                        img = "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=400&fit=crop"
+                
+                enriched_recs.append({
+                    "product_id": rec.get("product_id"),
+                    "product_name": rec.get("product_name"),
+                    "brand": rec.get("brand_name") or rec.get("brand") or "Generic",
+                    "price": price,
+                    "rating": float(rec.get("rating", 4.5)),
+                    "rating_count": int(rec.get("rating_count", 850)),
+                    "image_url": img,
+                    "relationship": rec.get("relationship"),
+                    "concept": rec.get("concept"),
+                    "final_score": float(rec.get("final_score", 0.0)),
+                    "reason": rec.get("reason")
+                })
+                
+            latency_ms = int((time.time() - start_time) * 1000)
+            logger.info("Local recommendations completed", count=len(enriched_recs), latency_ms=latency_ms)
+            
+            return {
+                "request_id": engine_response.get("request_id"),
+                "customer_id": customer_id,
+                "surface": surface,
+                "context_summary": engine_response.get("context_summary"),
+                "concepts": engine_response.get("concepts", []),
+                "recommendations": enriched_recs,
+                "latency_ms": latency_ms
+            }
+            
         except Exception as e:
-            logger.error("Failed to fetch serving recommendations, invoking fallback", error=str(e))
+            logger.error("Failed executing local Phase 7 pipeline, triggering fallback", error=str(e))
             return self._generate_fallback(customer_id, surface, limit)
 
     def _generate_fallback(self, customer_id: str, surface: str, limit: int) -> Dict[str, Any]:

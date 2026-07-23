@@ -41,15 +41,17 @@ function isRecommendedProduct(p: Product | RecommendedProduct): p is Recommended
   return 'relationship' in p;
 }
 
-function formatPrice(price: number): string {
+function formatPrice(price: number | undefined | null): string {
+  if (price === undefined || price === null) return 'Price on Request';
   return `₹${price.toLocaleString('en-IN')}`;
 }
 
 export function ProductCard({ product, variant = 'grid', onInfoClick, className = '' }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
 
-  const effectivePrice = product.discounted_price ?? product.price;
-  const hasDiscount = product.discounted_price && product.discounted_price < product.price;
+  const rawPrice = product.price ?? (product as any).selling_price;
+  const effectivePrice = product.discounted_price ?? rawPrice;
+  const hasDiscount = product.discounted_price && rawPrice && product.discounted_price < rawPrice;
   const isRec = isRecommendedProduct(product);
   const badge = product.badge;
 
@@ -156,7 +158,7 @@ export function ProductCard({ product, variant = 'grid', onInfoClick, className 
         <div className="flex items-center gap-1">
           <Star size={11} className="text-amber-400" fill="currentColor" />
           <span className="text-xs font-semibold text-gray-700">{product.rating}</span>
-          <span className="text-xs text-gray-400">({product.rating_count.toLocaleString()})</span>
+          <span className="text-xs text-gray-400">({(product.rating_count ?? 0).toLocaleString()})</span>
         </div>
 
         {/* Price */}

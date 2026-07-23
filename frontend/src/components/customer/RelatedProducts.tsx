@@ -120,8 +120,8 @@ export function RelatedProducts({ products }: RelatedProductsProps) {
                 {/* Price + stock */}
                 <div className="flex items-center justify-between pt-1">
                   <span className="font-bold text-sm text-slate-900">
-                    {rp.price
-                      ? `₹${rp.price.toLocaleString('en-IN')}`
+                    {(rp.price ?? (rp as any).selling_price)
+                      ? `₹${(rp.price ?? (rp as any).selling_price).toLocaleString('en-IN')}`
                       : 'On request'}
                   </span>
                   <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">

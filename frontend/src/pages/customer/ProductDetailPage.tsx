@@ -372,7 +372,7 @@ export function ProductDetailPage() {
                   }`}
                 >
                   {tab === 'qa' ? 'Q&A' : tab === 'specs' ? 'Specifications' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  {tab === 'reviews' && ` (${product.rating_count.toLocaleString()})`}
+                  {tab === 'reviews' && ` (${(product.rating_count ?? 0).toLocaleString()})`}
                 </button>
               ))}
             </div>

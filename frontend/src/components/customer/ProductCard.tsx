@@ -137,13 +137,16 @@ export function ProductCard({ product, showScore = false, isBestMatch = false }:
           {/* Price + stock */}
           <div className="flex items-center justify-between">
             <div>
-              {product.price && product.price > 0 ? (
-                <span className="text-base font-extrabold text-slate-900">
-                  ₹{product.price.toLocaleString('en-IN')}
-                </span>
-              ) : (
-                <span className="text-xs font-semibold text-slate-400">Price on request</span>
-              )}
+              {(() => {
+                const displayPrice = product.price ?? (product as any).selling_price;
+                return displayPrice && displayPrice > 0 ? (
+                  <span className="text-base font-extrabold text-slate-900">
+                    ₹{displayPrice.toLocaleString('en-IN')}
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold text-slate-400">Price on request</span>
+                );
+              })()}
             </div>
             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full">
               In Stock

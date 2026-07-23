@@ -150,7 +150,7 @@ export function RecommendationDetailsPanel({ product, onClose }: RecommendationD
               <div className="flex items-center gap-1 mt-1">
                 <Star size={11} className="text-amber-400 fill-amber-400" />
                 <span className="text-[10px] font-bold text-slate-700">
-                  {product.rating.toFixed(1)} ({product.rating_count.toLocaleString()} reviews)
+                  {product.rating.toFixed(1)} ({(product.rating_count ?? 0).toLocaleString()} reviews)
                 </span>
               </div>
             </div>
