@@ -3,16 +3,17 @@ Recommendation Gateway Service
 FastAPI Backend — Retail AI Portal
 """
 
+import os
+import sys
 import time
 import uuid
-import requests
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Fallback recommendations if Databricks serving endpoint is offline or credentials missing
 MOCK_PRODUCTS_DATA = [
   {
     "product_id": "MOCK-001",
@@ -83,7 +84,6 @@ MOCK_PRODUCTS_DATA = [
 
 
 class RecommendationService:
-    """Service to orchestrate Phase 7 Common-Sense Recommendation Engine locally."""
 
     async def get_recommendations(
         self,
@@ -93,43 +93,46 @@ class RecommendationService:
         limit: int = 8,
         session_context: Optional[Dict] = None
     ) -> Dict[str, Any]:
-        """
-        Execute Phase 7 recommendation pipeline using Databricks REST APIs for data,
-        LLM reasoning, and Vector Search indexing.
-        """
         start_time = time.time()
-        
-        # 1. Fallback check if credentials are missing
-        if not settings.is_databricks_configured:
-            logger.warning("Databricks credentials missing — falling back to mock recommendations")
+
+        # Explicit mode check — no silent fallback in live mode
+        if settings.is_mock_mode:
+            logger.info("APP_DATA_MODE=mock — returning static recommendations")
             return self._generate_fallback(customer_id, surface, limit)
 
-        # 2. Add bundle to path and import engine components
-        import os
-        import sys
-        from pathlib import Path
-        
-        bundle_path = Path("E:/PraveenFrankly/Databricks/Accelerators/Retail/Product-recommendation/ProductRecommendation-Bundle")
+        # Live mode: Databricks must be configured
+        if not settings.is_databricks_configured:
+            return {
+                "status": "error",
+                "code": "DATABRICKS_UNAVAILABLE",
+                "message": "Recommendation service is unavailable because Databricks credentials are not configured. Set APP_DATA_MODE=mock for offline demo.",
+            }
+
+        bundle_path = self._resolve_bundle_path()
+        if bundle_path is None:
+            return {
+                "status": "error",
+                "code": "BUNDLE_NOT_FOUND",
+                "message": "Recommendation Bundle not found. Set RECOMMENDATION_BUNDLE_PATH or APP_DATA_MODE=mock.",
+            }
+
         if str(bundle_path) not in sys.path:
             sys.path.insert(0, str(bundle_path))
-            
+
         try:
             from src.config.loader import AcceleratorConfig
             from src.recommendation.repositories.sql_customer_context_repository import SqlCustomerContextRepository
             from src.recommendation.recommendation_service import generate_recommendations
-            
-            # 3. Setup credentials for downstream REST / SDK clients
+
             clean_host = settings.databricks_host.replace("https://", "").replace("http://", "")
             os.environ["DATABRICKS_HOST"] = clean_host
             os.environ["DATABRICKS_TOKEN"] = settings.resolved_token
-            
-            # Load bundle configuration
+
             config = AcceleratorConfig()
             warehouse_id = settings.sql_warehouse_id or config.serving.get("warehouse_id", "")
             catalog = config.catalog
             gold_schema = config.gold_schema
-            
-            # Initialize SQL context repository (Statement execution layer)
+
             repository = SqlCustomerContextRepository(
                 databricks_host=f"https://{clean_host}",
                 token=settings.resolved_token,
@@ -137,9 +140,8 @@ class RecommendationService:
                 catalog=catalog,
                 gold_schema=gold_schema
             )
-            
-            # 4. Generate recommendations using Phase 7 orchestration engine
-            logger.info("Executing Phase 7 recommendation pipeline locally", customer_id=customer_id, surface=surface)
+
+            logger.info("Executing Phase 7 recommendation pipeline", customer_id=customer_id, surface=surface)
             engine_response = generate_recommendations(
                 spark=repository,
                 customer_id=customer_id,
@@ -149,11 +151,9 @@ class RecommendationService:
                 limit=limit,
                 session_context=session_context
             )
-            
-            # 5. Enrich candidates with price/image/rating fallbacks for premium React rendering
+
             enriched_recs = []
             for rec in engine_response.get("recommendations", []):
-                # Retrieve price from metadata, price_tier, or fallback
                 price_tier = rec.get("price_tier", "MEDIUM").upper()
                 if rec.get("price"):
                     price = float(rec["price"])
@@ -164,8 +164,7 @@ class RecommendationService:
                         price = 24990
                     else:
                         price = 7699
-                
-                # Fetch image from catalog, or generate beautiful Unsplash electronics images
+
                 raw_image = rec.get("image_url", "")
                 if raw_image and raw_image.startswith("http"):
                     img = raw_image
@@ -183,7 +182,7 @@ class RecommendationService:
                         img = "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop"
                     else:
                         img = "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=400&fit=crop"
-                
+
                 enriched_recs.append({
                     "product_id": rec.get("product_id"),
                     "product_name": rec.get("product_name"),
@@ -197,35 +196,70 @@ class RecommendationService:
                     "final_score": float(rec.get("final_score", 0.0)),
                     "reason": rec.get("reason")
                 })
-                
+
             latency_ms = int((time.time() - start_time) * 1000)
-            logger.info("Local recommendations completed", count=len(enriched_recs), latency_ms=latency_ms)
-            
+            logger.info("Recommendations completed", count=len(enriched_recs), latency_ms=latency_ms)
+
             return {
                 "request_id": engine_response.get("request_id"),
                 "customer_id": customer_id,
                 "surface": surface,
                 "context_summary": engine_response.get("context_summary"),
+                "intent": engine_response.get("intent"),
                 "concepts": engine_response.get("concepts", []),
                 "recommendations": enriched_recs,
                 "latency_ms": latency_ms
             }
-            
+
         except Exception as e:
-            logger.error("Failed executing local Phase 7 pipeline, triggering fallback", error=str(e))
-            return self._generate_fallback(customer_id, surface, limit)
+            logger.error("Phase 7 pipeline failed", error=str(e))
+            return {
+                "status": "error",
+                "code": "RECOMMENDATION_FAILED",
+                "message": f"Recommendation engine error: {str(e)}",
+            }
+
+    def _resolve_bundle_path(self) -> Optional[Path]:
+        env_path = settings.recommendation_bundle_path.strip()
+        if env_path:
+            p = Path(env_path).resolve()
+            if p.exists():
+                return p
+            logger.warning("RECOMMENDATION_BUNDLE_PATH set but not found", path=str(p))
+
+        candidates = []
+        f = Path(__file__).resolve()
+        for parent_count in range(1, 9):
+            ancestor = f.parents[parent_count - 1] if parent_count <= len(f.parents) else None
+            if ancestor is None:
+                break
+            candidates.append(ancestor / "ProductRecommendation-Bundle")
+            if parent_count >= 3:
+                candidates.append(ancestor / "Product-recommendation" / "ProductRecommendation-Bundle")
+
+        tried = []
+        for c in candidates:
+            tried.append(str(c))
+            target = c.resolve()
+            if target.exists() and (target / "src").exists():
+                logger.info("Bundle auto-discovered", path=str(target))
+                return target
+
+        legacy = Path(r"E:\PraveenFrankly\Databricks\Accelerators\Retail\Product-recommendation\ProductRecommendation-Bundle")
+        if legacy.exists() and (legacy / "src").exists():
+            logger.info("Bundle discovered via legacy hardcoded fallback path")
+            return legacy
+
+        logger.warning("Bundle not found via auto-discovery. Set RECOMMENDATION_BUNDLE_PATH.", tried=tried)
+        return None
 
     def _generate_fallback(self, customer_id: str, surface: str, limit: int) -> Dict[str, Any]:
-        """Generate static mock payload matching the verified serving contract."""
         recs = MOCK_PRODUCTS_DATA[:limit]
-        
-        # Adjust relationship filters depending on the surface
         if surface == "CART":
             recs = [r for r in recs if r["relationship"] in ("COMPLEMENTARY", "ACCESSORY")]
         elif surface == "PRODUCT_PAGE":
-            # For PDP, map relationships to similar/alternatives
             recs = [dict(r, relationship="SIMILAR" if idx % 2 == 0 else "ALTERNATIVE") for idx, r in enumerate(recs)]
-            
+
         concepts = [
             {"concept": "Wireless productivity", "relationship": "COMPLEMENTARY", "reason": "Based on office searches"},
             {"concept": "Premium noise cancelling audio", "relationship": "SIMILAR", "reason": "Based on headphone views"}
@@ -235,7 +269,7 @@ class RecommendationService:
             "request_id": str(uuid.uuid4()),
             "customer_id": customer_id,
             "surface": surface,
-            "context_summary": f"Fallback context: {customer_id} on {surface}",
+            "context_summary": f"Mock context: {customer_id} on {surface}",
             "concepts": concepts,
             "recommendations": recs,
             "latency_ms": 150

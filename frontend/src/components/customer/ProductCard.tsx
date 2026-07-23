@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, Star } from '@phosphor-icons/react'
-import type { Product } from '@/services/api'
+import type { Product } from '@/api/searchApi'
 import { clsx } from 'clsx'
 
 interface ProductCardProps {

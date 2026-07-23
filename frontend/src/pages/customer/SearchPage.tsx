@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ProductCard } from '@/components/customer/ProductCard'
 import { FilterSidebar } from '@/components/customer/FilterSidebar'
 import { SearchMetaBar } from '@/components/customer/SearchMetaBar'
-import { searchAPI } from '@/services/api'
+import { searchApi } from '@/api/searchApi'
 import { useSearchStore } from '@/store/useSearchStore'
 import { NavBar } from '../../components/layout/NavBar'
 import { useUserStore } from '../../store/userStore'
@@ -42,7 +42,7 @@ export function SearchPage() {
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['search', query, page, pageSize, filters],
-    queryFn: () => searchAPI.search({ query, page, page_size: pageSize, filters }),
+    queryFn: () => searchApi.search({ query, page, page_size: pageSize, filters }),
     enabled: !!query,
   })
 

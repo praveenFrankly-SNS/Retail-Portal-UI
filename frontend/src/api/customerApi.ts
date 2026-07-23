@@ -3,14 +3,12 @@
 // Gateway for active switcher personas and context tracking.
 // ============================================================
 
-import apiClient from './client';
+import apiClient, { isLiveMode } from './client';
 import type { Customer, CustomerProfile, CustomerAIContext } from '../types/customer';
 import { MOCK_DEMO_CUSTOMERS, MOCK_ACTIVE_CUSTOMER, MOCK_AI_CONTEXT } from '../mocks/customers';
 
-const LIVE_API = import.meta.env.VITE_ENABLE_LIVE_API === 'true';
-
 export async function getCustomers(): Promise<Customer[]> {
-  if (LIVE_API) {
+  if (isLiveMode()) {
     try {
       const { data } = await apiClient.get<{ customers: Customer[] }>('/api/v1/customers');
       return data.customers;
@@ -22,7 +20,7 @@ export async function getCustomers(): Promise<Customer[]> {
 }
 
 export async function getCustomerProfile(customerId: string): Promise<CustomerProfile> {
-  if (LIVE_API) {
+  if (isLiveMode()) {
     try {
       const { data } = await apiClient.get<CustomerProfile>(`/api/v1/customers/${customerId}/profile`);
       return data;
@@ -34,7 +32,7 @@ export async function getCustomerProfile(customerId: string): Promise<CustomerPr
 }
 
 export async function getCustomerContext(customerId: string): Promise<CustomerAIContext> {
-  if (LIVE_API) {
+  if (isLiveMode()) {
     try {
       const { data } = await apiClient.get<CustomerAIContext>(`/api/v1/customers/${customerId}/context`);
       return data;
@@ -53,7 +51,7 @@ export async function logCustomerEvent(
   productId?: string,
   query?: string
 ): Promise<void> {
-  if (LIVE_API) {
+  if (isLiveMode()) {
     try {
       await apiClient.post('/api/v1/events', {
         customer_id: customerId,

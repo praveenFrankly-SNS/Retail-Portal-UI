@@ -37,10 +37,18 @@ class Settings(BaseSettings):
     unity_catalog_name: str = Field(default="product_search_dev", env="UNITY_CATALOG_NAME")
     unity_schema_name: str = Field(default="gold", env="UNITY_SCHEMA_NAME")
     recommendation_endpoint: str = Field(default="product-recommendation-dev", env="RECOMMENDATION_ENDPOINT")
+    recommendation_bundle_path: str = Field(default="", env="RECOMMENDATION_BUNDLE_PATH")
 
     # LLM / Embedding Model Configuration
     llm_endpoint: str = Field(default="databricks-meta-llama-3-1-70b-instruct", env="LLM_ENDPOINT")
     embedding_model_endpoint: str = Field(default="databricks-bge-large-en", env="EMBEDDING_MODEL_ENDPOINT")
+
+    # Data Mode
+    app_data_mode: str = Field(default="live", env="APP_DATA_MODE")
+
+    @property
+    def is_mock_mode(self) -> bool:
+        return self.app_data_mode.lower() == "mock"
 
     # Application Configuration
     app_name: str = Field(default="Retail AI Portal", env="APP_NAME")

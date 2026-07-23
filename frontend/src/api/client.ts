@@ -1,9 +1,3 @@
-// ============================================================
-// Retail AI Portal — API Client
-// Uses axios. Stage 1: new recommendation/customer endpoints
-// return mocks. Stage 2: switch VITE_ENABLE_LIVE_API=true.
-// ============================================================
-
 import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -16,7 +10,10 @@ export const apiClient = axios.create({
   },
 });
 
-// Response interceptor for error normalization
+export const isLiveMode = (): boolean => {
+  return import.meta.env.VITE_APP_DATA_MODE === 'live';
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

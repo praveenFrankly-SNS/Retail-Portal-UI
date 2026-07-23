@@ -3,11 +3,9 @@
 // Connecting catalog search, categories, and detail lookups.
 // ============================================================
 
-import apiClient from './client';
+import apiClient, { isLiveMode } from './client';
 import type { Product, ProductDetail, Category } from '../types/product';
 import { MOCK_PRODUCTS, MOCK_PRODUCT_DETAIL, MOCK_CATEGORIES } from '../mocks/products';
-
-const LIVE_API = import.meta.env.VITE_ENABLE_LIVE_API === 'true';
 
 export interface CatalogResponse {
   products: Product[];
@@ -28,7 +26,7 @@ export async function getProducts(params: {
   page_size?: number;
   dataset?: string;
 }): Promise<CatalogResponse> {
-  if (LIVE_API) {
+  if (isLiveMode()) {
     try {
       const { data } = await apiClient.get<CatalogResponse>('/api/v1/products', { params });
       return data;
@@ -48,7 +46,7 @@ export async function getProducts(params: {
 }
 
 export async function getProductDetail(productId: string, dataset: string = "wands"): Promise<ProductDetail> {
-  if (LIVE_API) {
+  if (isLiveMode()) {
     try {
       const { data } = await apiClient.get<ProductDetail>(`/api/v1/products/${productId}`, {
         params: { dataset }
@@ -62,7 +60,7 @@ export async function getProductDetail(productId: string, dataset: string = "wan
 }
 
 export async function getCategories(dataset: string = "wands"): Promise<Category[]> {
-  if (LIVE_API) {
+  if (isLiveMode()) {
     try {
       const { data } = await apiClient.get<{ categories: { name: string; count: number }[] }>('/api/v1/products/categories', {
         params: { dataset }
@@ -81,7 +79,7 @@ export async function getCategories(dataset: string = "wands"): Promise<Category
 }
 
 export async function getTrendingProducts(limit: number = 8, dataset: string = "wands"): Promise<Product[]> {
-  if (LIVE_API) {
+  if (isLiveMode()) {
     try {
       const { data } = await apiClient.get<{ products: Product[] }>('/api/v1/products/trending', {
         params: { limit, dataset }

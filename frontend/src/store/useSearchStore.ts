@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { SearchFilters } from '@/services/api'
+import type { SearchFilters } from '@/api/searchApi'
 
 interface SearchState {
   query: string

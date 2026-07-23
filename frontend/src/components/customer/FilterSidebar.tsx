@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FunnelSimple, ArrowCounterClockwise, Star, SpinnerGap } from '@phosphor-icons/react'
 import { useQuery } from '@tanstack/react-query'
-import { searchAPI, SearchFilters, CategoryResult } from '@/services/api'
+import { searchApi, type SearchFilters, type CategoryResult } from '@/api/searchApi'
 
 interface FilterSidebarProps {
   filters: SearchFilters
@@ -28,14 +28,14 @@ export function FilterSidebar({
   // Fetch categories from Databricks Gold table
   const { data: categories = [], isLoading: catsLoading } = useQuery<CategoryResult[]>({
     queryKey: ['categories'],
-    queryFn: () => searchAPI.getCategories(),
+    queryFn: () => searchApi.getCategories(),
     staleTime: 5 * 60 * 1000,
   })
 
   // Fetch brands, filtered by selected category
   const { data: brands = [], isLoading: brandsLoading } = useQuery({
     queryKey: ['brands', filters.category],
-    queryFn: () => searchAPI.getBrands(filters.category),
+    queryFn: () => searchApi.getBrands(filters.category),
     staleTime: 5 * 60 * 1000,
   })
 

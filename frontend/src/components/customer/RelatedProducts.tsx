@@ -6,7 +6,7 @@
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CaretLeft, CaretRight, Star } from '@phosphor-icons/react';
-import type { RelatedProduct } from '@/services/api';
+import type { RelatedProduct } from '@/api/searchApi';
 
 interface RelatedProductsProps {
   products: RelatedProduct[];

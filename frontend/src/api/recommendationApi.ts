@@ -3,12 +3,9 @@
 // Stage 2: Unified REST calls proxying to FastAPI backend.
 // ============================================================
 
-import apiClient from './client';
+import apiClient, { isLiveMode } from './client';
 import type { RecommendationResponse } from '../types/recommendation';
 import { MOCK_HOME_RECOMMENDATION_RESPONSE } from '../mocks/recommendations';
-
-// Enable by setting VITE_ENABLE_LIVE_API=true in .env
-const LIVE_API = import.meta.env.VITE_ENABLE_LIVE_API === 'true';
 
 export interface SessionContext {
   recent_searches: string[];
@@ -23,7 +20,7 @@ export async function getRecommendations(
   limit: number = 8,
   sessionContext?: SessionContext
 ): Promise<RecommendationResponse> {
-  if (LIVE_API) {
+  if (isLiveMode()) {
     try {
       const { data } = await apiClient.post<RecommendationResponse>('/api/v1/recommendations', {
         customer_id: customerId,
