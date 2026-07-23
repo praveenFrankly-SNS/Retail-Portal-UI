@@ -244,7 +244,11 @@ class RecommendationService:
             if ancestor is None:
                 break
             candidates.append(ancestor / "ProductRecommendation-Bundle")
-            if parent_count >= 3:
+            candidates.append(ancestor / "product-recommendation")
+            candidates.append(ancestor / "Product-recommendation")
+            if parent_count >= 2:
+                candidates.append(ancestor / "retail" / "product-recommendation")
+                candidates.append(ancestor / "retail" / "Product-recommendation")
                 candidates.append(ancestor / "Product-recommendation" / "ProductRecommendation-Bundle")
 
         tried = []

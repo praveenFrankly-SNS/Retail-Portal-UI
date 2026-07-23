@@ -60,12 +60,12 @@ export function ProductCard({ product, showScore = false, isBestMatch = false }:
       onClick={handleClick}
     >
       {/* Top Image Frame */}
-      <div className="relative aspect-[4/3] bg-slate-50 border-b border-slate-100 overflow-hidden flex flex-col items-center justify-center p-2 text-center">
+      <div className="relative h-32 sm:h-36 bg-slate-50 border-b border-slate-100 overflow-hidden flex flex-col items-center justify-center p-2 text-center">
         {product.image_url && !imgError ? (
           <img
             src={product.image_url}
             alt={displayTitle}
-            className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+            className="max-h-24 max-w-[80%] object-contain group-hover:scale-105 transition-transform duration-300"
             onError={() => setImgError(true)}
           />
         ) : (

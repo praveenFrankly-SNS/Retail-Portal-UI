@@ -108,7 +108,7 @@ export function ProductCard({ product, variant = 'grid', onInfoClick, className 
       className={`product-card flex flex-col cursor-pointer group ${className}`}
     >
       {/* Image area */}
-      <div className="relative aspect-square bg-gray-50 rounded-t-xl overflow-hidden">
+      <div className="relative h-32 sm:h-36 bg-gray-50 rounded-t-xl overflow-hidden flex items-center justify-center p-2">
         {badge && (
           <span className={`absolute top-2 left-2 z-10 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${BADGE_STYLES[badge] ?? 'bg-gray-100 text-gray-600'}`}>
             {BADGE_LABELS[badge] ?? badge}
@@ -133,17 +133,13 @@ export function ProductCard({ product, variant = 'grid', onInfoClick, className 
           </button>
         )}
         {product.image_url ? (
-          <div className="w-full h-full flex items-center justify-center p-4">
-            <img
-              src={product.image_url}
-              alt={product.product_name}
-              className="w-1/2 h-1/2 object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-300"
-            />
-          </div>
+          <img
+            src={product.image_url}
+            alt={product.product_name}
+            className="max-h-24 max-w-[80%] object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-300"
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-16 h-16 bg-gray-200 rounded-xl" />
-          </div>
+          <div className="w-10 h-10 bg-gray-200 rounded-xl" />
         )}
       </div>
 

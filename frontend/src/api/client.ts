@@ -11,7 +11,7 @@ export const apiClient = axios.create({
 });
 
 export const isLiveMode = (): boolean => {
-  return import.meta.env.VITE_APP_DATA_MODE === 'live';
+  return import.meta.env.VITE_APP_DATA_MODE === 'live' || import.meta.env.VITE_ENABLE_LIVE_API === 'true';
 };
 
 apiClient.interceptors.response.use(

@@ -15,6 +15,14 @@ import type { Product, Category } from '../../types/product';
 
 const SORT_OPTIONS = ['Popularity', 'Price: Low to High', 'Price: High to Low', 'Rating'];
 
+function formatCategoryTabName(rawName?: string): string {
+  if (!rawName || rawName.startsWith('http://') || rawName.startsWith('https://') || rawName.includes('.jpg') || rawName.includes('.png')) {
+    return '';
+  }
+  const parts = rawName.split(/\s*(?:\||>|›|\/)\s*/).filter(Boolean);
+  return parts.length > 0 ? parts[parts.length - 1].trim() : rawName.trim();
+}
+
 export function CatalogPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -38,7 +46,10 @@ export function CatalogPage() {
   // Load categories
   useEffect(() => {
     getCategories()
-      .then(setCategories)
+      .then((cats) => {
+        const cleanCats = (cats || []).filter((c) => formatCategoryTabName(c.name) !== '');
+        setCategories(cleanCats);
+      })
       .catch(err => console.warn(err));
   }, []);
 
@@ -137,7 +148,7 @@ export function CatalogPage() {
                 : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
               }`}
           >
-            {cat.name}
+            {formatCategoryTabName(cat.name)}
           </button>
         ))}
       </div>
@@ -217,7 +228,7 @@ export function CatalogPage() {
         {/* ── Main Catalog Grid ─────────────────────────── */}
         <div className="flex-1">
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-64 rounded-2xl bg-white border border-slate-100 animate-pulse p-4 flex flex-col justify-between">
                   <div className="w-full h-36 bg-slate-50 rounded-xl" />
@@ -241,7 +252,7 @@ export function CatalogPage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {products.map((product) => (
                 <div key={product.product_id} onClick={() => navigate(`/products/${product.product_id}`, { state: { product } })} className="cursor-pointer">
                   <ProductCard product={product} variant="grid" />
