@@ -35,6 +35,7 @@ class Settings(BaseSettings):
 
     recommendation_endpoint: str = Field(default="product-recommendation-dev", env="RECOMMENDATION_ENDPOINT")
     recommendation_bundle_path: str = Field(default="", env="RECOMMENDATION_BUNDLE_PATH")
+    search_bundle_path: str = Field(default=r"E:\PraveenFrankly\Databricks\Accelerators\Retail\Product-Search\ProductSearch-Amazon-Bundle", env="SEARCH_BUNDLE_PATH")
 
     # LLM / Embedding Model Configuration
     llm_endpoint: str = Field(default="databricks-meta-llama-3-1-70b-instruct", env="LLM_ENDPOINT")
@@ -121,7 +122,7 @@ class Settings(BaseSettings):
     @property
     def is_databricks_configured(self) -> bool:
         """True if Databricks credentials are present"""
-        return bool(self.databricks_host and self.databricks_token)
+        return bool(self.databricks_host and (self.databricks_token or self.resolved_token))
 
     @property
     def resolved_token(self) -> str:
@@ -131,13 +132,14 @@ class Settings(BaseSettings):
             import subprocess
             import json
             import os
+            import shutil
             
             # Prefer the newer CLI binary path
-            cli_path = r"C:\Users\ADMIN\bin\databricks.exe"
-            if not os.path.exists(cli_path):
-                cli_path = "databricks"
+            cli_path = "databricks"
+            if not shutil.which(cli_path):
+                cli_path = r"C:\Users\ADMIN\bin\databricks.exe"
                 
-            for profile in ["praveen", "Praveen", "praveen.v.ihub@snsgroups.com", "DEFAULT"]:
+            for profile in ["pf277", "praveen", "Praveen", "praveen.v.ihub@snsgroups.com", "DEFAULT"]:
                 try:
                     res = subprocess.run(
                         [cli_path, "auth", "token", "--profile", profile],

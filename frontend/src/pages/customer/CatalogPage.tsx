@@ -10,6 +10,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Grid3X3, List, Search as SearchIcon, SlidersHorizontal } from 'lucide-react';
 import { MainLayout } from '../../components/layout/MainLayout';
 import { ProductCard } from '../../components/product/ProductCard';
+import { Pagination } from '../../components/common/Pagination';
 import { getProducts, getCategories } from '../../api/productApi';
 import type { Product, Category } from '../../types/product';
 
@@ -263,27 +264,11 @@ export function CatalogPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-8 pt-4 border-t border-slate-200">
-              <p className="text-xs text-slate-400 font-bold">Showing page {currentPage} of {totalPages}</p>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }).map((_, i) => {
-                  const page = i + 1;
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
-                        currentPage === page
-                          ? 'bg-primary-600 text-white shadow-md shadow-primary-100'
-                          : 'text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           )}
         </div>
       </div>

@@ -58,19 +58,24 @@ Output: {
   ]
 }"""
 
-_QUERY_UNDERSTANDING_SYSTEM_PROMPT = """You are a retail product search query analyzer.
+_QUERY_UNDERSTANDING_SYSTEM_PROMPT = """You are an enterprise retail product search query analyzer with strict safety and intent guardrails.
 
-Given a customer search query, extract structured search intent and return ONLY valid JSON.
+Given a customer search query, your job is to REFINE the query conservatively so it matches relevant e-commerce products without altering user intent, hallucinating unrelated categories, or violating safety/PII guidelines.
 
-Your response must be a single JSON object with these fields:
-- "rewritten_query" (string): A clean, specific version of the query optimized for semantic search.
-- "category" (string or null): The product category if detectable. null if unclear.
-- "brand" (string or null): The brand name if mentioned. null if not mentioned.
-- "price_max" (number or null): The maximum price if mentioned (numeric only). null if not mentioned.
-- "intent_tokens" (list of strings): Key concepts from the query (3-6 words/phrases) that describe what the user wants.
-- "filters" (object): Additional attribute filters inferred. {} if none.
+Safety & Guardrail Rules:
+1. PII Protection: Remove personal information (phone numbers, email addresses, credit cards, names) if accidentally present in query.
+2. High Intent Sensitivity: Keep the exact core product name intact. Do not substitute specific product types with different ones (e.g. do not turn "door mat" into "mouse pad" or "headphones").
+3. Refinement Scope: Fix typos, remove noise words ("i want to buy", "looking for", "best price on"), and extract structured category/brand/price bounds.
 
-Respond ONLY with the JSON object. No explanation, no markdown, no code fences."""
+Return ONLY a valid JSON object with these fields:
+- "rewritten_query" (string): The conservatively refined query string preserving core product meaning.
+- "category" (string or null): The product category if clearly specified in the query. null if ambiguous.
+- "brand" (string or null): Brand name if mentioned. null if not mentioned.
+- "price_max" (number or null): Max price constraint. null if omitted.
+- "intent_tokens" (list of strings): 3-5 core search concept tokens.
+- "filters" (object): Key attribute filters inferred. {} if none.
+
+Respond ONLY with valid JSON. No explanation, markdown, or code fences."""
 
 
 def _safe_float(val) -> Optional[float]:
@@ -336,7 +341,7 @@ class DatabricksService:
         }
 
     def _understand_query(self, query: str) -> Dict[str, Any]:
-        """Call LLM to understand and rewrite the query. Returns intent dict."""
+        """Extract search intent and concepts using Databricks LLM / AI Gateway."""
         raw = _call_llm(_QUERY_UNDERSTANDING_SYSTEM_PROMPT, query)
         parsed = _parse_json_response(raw)
         if parsed:
@@ -428,12 +433,14 @@ class DatabricksService:
             try:
                 response = target_index.similarity_search(**kwargs)
             except Exception as fe:
-                if filters and "filters" in kwargs:
-                    logger.warning("Vector search filter parameter failed, retrying without filter", error=str(fe))
-                    kwargs.pop("filters", None)
+                logger.warning("Vector search query failed with full parameters, retrying with columns=['product_id']", error=str(fe))
+                kwargs.pop("filters", None)
+                kwargs["columns"] = ["product_id"]
+                try:
                     response = target_index.similarity_search(**kwargs)
-                else:
-                    raise fe
+                except Exception as fe2:
+                    logger.error("Vector search fallback failed", error=str(fe2))
+                    return []
 
             manifest = response.get("manifest") or {}
             schema = manifest.get("schema") or {}
@@ -459,7 +466,12 @@ class DatabricksService:
                 else:
                     row_dict = {}
 
-                score = row_dict.pop("score", None) or row_dict.pop("__score", None) or 0.8
+                score = (
+                    row_dict.pop("score", None) or 
+                    row_dict.pop("__score__", None) or 
+                    row_dict.pop("__score", None) or 
+                    0.85
+                )
                 row_dict["similarity_score"] = float(score)
 
                 mapped = _standardize_product_dict(row_dict)

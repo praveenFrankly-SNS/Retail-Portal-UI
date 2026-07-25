@@ -66,3 +66,13 @@ export async function logCustomerEvent(
     console.log(`[Event Logged Mock] customer=${customerId} | type=${eventType} | product=${productId} | query=${query}`);
   }
 }
+
+export async function clearCustomerHistory(customerId: string): Promise<void> {
+  if (isLiveMode()) {
+    try {
+      await apiClient.delete(`/api/v1/events/history/${customerId}`);
+    } catch (err) {
+      console.warn("Failed to clear history on backend:", err);
+    }
+  }
+}

@@ -67,3 +67,13 @@ async def log_event(event: EventPayload, background_tasks: BackgroundTasks):
 
     background_tasks.add_task(_safe_insert)
     return {"status": "success", "timestamp": event_time}
+
+
+@router.delete("/history/{customer_id}")
+async def clear_customer_history(customer_id: str):
+    """
+    Clear customer activity history (recent searches and recent views) from Redis session state.
+    Cart product items are preserved.
+    """
+    session_service.clear_history(customer_id)
+    return {"status": "success", "customer_id": customer_id}

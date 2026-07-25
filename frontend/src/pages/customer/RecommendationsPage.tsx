@@ -129,68 +129,7 @@ export function RecommendationsPage() {
 
   return (
     <MainLayout showRightSidebar={false}>
-      <div className="flex gap-6 min-h-[calc(100vh-128px)]">
-
-        {/* ── LEFT SIDEBAR: Profile + Sub-nav ───────────────────── */}
-        <aside className="w-64 shrink-0 space-y-4">
-
-          {/* Profile Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-primary-100 text-primary-700 font-black text-lg flex items-center justify-center shrink-0">
-              {activeCustomer.customer_name.charAt(0)}
-            </div>
-            <div className="min-w-0">
-              <p className="font-black text-slate-900 text-sm truncate">{activeCustomer.customer_name}</p>
-              <span className="inline-block bg-primary-50 text-primary-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-primary-100">
-                Current
-              </span>
-              <p className="text-[10px] text-slate-500 mt-0.5 truncate">{activeCustomer.persona_label}</p>
-            </div>
-          </div>
-
-          {/* Sub-navigation */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <nav className="divide-y divide-slate-50">
-              {LEFT_NAV.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveSection(id)}
-                  className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm font-semibold transition-colors ${
-                    activeSection === id
-                      ? 'bg-primary-50 text-primary-700 border-l-2 border-primary-600'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon size={15} className={activeSection === id ? 'text-primary-500' : 'text-slate-400'} />
-                    <span className="text-xs">{label}</span>
-                  </div>
-                  <ChevronRight size={12} className="text-slate-300" />
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* AI Recommendation Engine Badge */}
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Brain size={15} className="text-primary-600" />
-              <span className="text-xs font-black text-slate-900">AI Recommendation Engine</span>
-              <span className="ml-auto bg-green-100 text-green-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full">
-                ACTIVE
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed mb-2">
-              Personalized results based on your behavior and preferences.
-            </p>
-            <button className="text-[10px] text-primary-600 font-bold hover:underline">
-              How it works →
-            </button>
-          </div>
-        </aside>
-
-        {/* ── CENTER: Recommendation Surfaces ────────────────────── */}
-        <div className="flex-1 min-w-0 space-y-8">
+      <div className="space-y-8 max-w-full">
 
           {/* Page Header */}
           <div className="flex items-center justify-between">
@@ -216,8 +155,8 @@ export function RecommendationsPage() {
           {/* HOME recs */}
           <RecommendationRow
             id="recs-home"
-            title="Recommended For You"
-            subtitle="Handpicked products we think you'll love"
+            title="Personalized Picks"
+            subtitle={`AI recommendations tailored for ${activeCustomer.customer_name}`}
             items={homeRecs}
             isAI
             isLoading={loading}
@@ -280,11 +219,15 @@ export function RecommendationsPage() {
               onViewAll={() => navigate('/catalog')}
             />
           )}
-        </div>
       </div>
 
-      {/* Recommendation details slide-out panel (WF-10) */}
-      <RecommendationDetailsPanel product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+      {/* Slide-over details panel */}
+      {selectedProduct && (
+        <RecommendationDetailsPanel
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </MainLayout>
   );
 }

@@ -48,7 +48,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Home',            path: '/',               icon: Home },
-  { label: 'AI Search',       path: '/search',         icon: Sparkles },
+  { label: 'Product Search',  path: '/search',         icon: Search },
   { label: 'Catalog',         path: '/catalog',        icon: LayoutGrid },
   { label: 'Recommendations', path: '/recommendations',icon: Star },
   { label: 'Cart',            path: '/cart',           icon: ShoppingCart },
@@ -70,7 +70,7 @@ export function MainLayout({ children, showRightSidebar = false }: MainLayoutPro
   const navigate  = useNavigate();
 
   const cartCount = useCartStore((s) => s.getItemCount());
-  const { activeCustomer, setActiveCustomer, sessionContext, addSearchEvent } = useUserStore();
+  const { activeCustomer, setActiveCustomer, sessionContext, addSearchEvent, clearActivityHistory } = useUserStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showSwitcher, setShowSwitcher] = useState(false);
@@ -209,12 +209,23 @@ export function MainLayout({ children, showRightSidebar = false }: MainLayoutPro
                 </span>
               </div>
             </div>
-            <Link
-              to="/profile"
-              className="text-xs font-bold text-primary-600 hover:text-primary-700 mt-3 block text-center border-t border-slate-100 pt-3"
-            >
-              View full profile →
-            </Link>
+            <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 mt-3">
+              <Link
+                to="/profile"
+                className="text-[11px] font-bold text-primary-600 hover:text-primary-700"
+              >
+                View profile →
+              </Link>
+              {(sessionContext.recent_views.length > 0 || sessionContext.recent_searches.length > 0) && (
+                <button
+                  onClick={clearActivityHistory}
+                  className="text-[11px] font-bold text-slate-400 hover:text-red-500 transition-colors"
+                  title="Clear search and view history (keeps cart intact)"
+                >
+                  Clear History
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -354,10 +365,10 @@ export function MainLayout({ children, showRightSidebar = false }: MainLayoutPro
 
           {/* ── RIGHT SIDEBAR ─────────────────────────────────────────── */}
           {showRightSidebar && (
-            <aside className="w-80 bg-white border-l border-slate-200 shrink-0 hidden xl:flex flex-col gap-6 p-5 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto">
+            <aside className="w-80 max-w-xs bg-white border-l border-slate-200 shrink-0 hidden xl:flex flex-col gap-5 p-5 h-screen sticky top-0 overflow-y-auto">
 
               {/* AI Demo Lab Promo */}
-              <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 rounded-2xl border border-indigo-100 p-4 relative overflow-hidden">
+              <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 rounded-2xl border border-indigo-100 p-4 relative overflow-hidden shrink-0">
                 <div className="absolute right-1 -bottom-3 opacity-10">
                   <Brain size={100} className="text-indigo-900" />
                 </div>
@@ -377,15 +388,26 @@ export function MainLayout({ children, showRightSidebar = false }: MainLayoutPro
               </div>
 
               {/* Your Activity */}
-              <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/40">
+              <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/40 shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
                     <Activity size={13} className="text-primary-600 animate-pulse" />
                     Your Activity
                   </h4>
-                  <Link to="/profile" className="text-xs font-bold text-primary-600 hover:text-primary-700">
-                    View All
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    {(sessionContext.recent_views.length > 0 || sessionContext.recent_searches.length > 0) && (
+                      <button
+                        onClick={clearActivityHistory}
+                        className="text-[11px] font-bold text-slate-400 hover:text-red-500 transition-colors"
+                        title="Clear search and view history"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <Link to="/profile" className="text-xs font-bold text-primary-600 hover:text-primary-700">
+                      View All
+                    </Link>
+                  </div>
                 </div>
                 <div className="space-y-2.5">
                   {sessionContext.recent_views.length > 0 ? (

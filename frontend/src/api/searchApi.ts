@@ -122,7 +122,7 @@ export interface SearchStats {
 }
 
 function getDataset(): string {
-  return localStorage.getItem('dataset_variant') || 'wands'
+  return localStorage.getItem('dataset_variant') || 'amazon'
 }
 
 export const searchApi = {

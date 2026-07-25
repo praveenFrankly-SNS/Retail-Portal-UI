@@ -27,12 +27,8 @@ import { useUserStore } from '../../store/userStore';
 import type { RecommendedProduct } from '../../types/recommendation';
 import type { ProductDetail } from '../../types/product';
 
-const PLACEHOLDER_IMAGES = [
-  'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&h=500&fit=crop',
-  'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=500&h=500&fit=crop',
-  'https://images.unsplash.com/photo-1487215078519-e21cc028cb29?w=500&h=500&fit=crop',
-  'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=500&h=500&fit=crop',
-];
+// Default fallback image if none provided
+const DEFAULT_FALLBACK_IMAGE = 'https://m.media-amazon.com/images/I/31dnZ234ZOL._SY300_SX300_QL70_FMwebp_.jpg';
 
 function StarRating({ rating, count }: { rating: number; count: number }) {
   return (
@@ -92,18 +88,27 @@ export function ProductDetailPage() {
   const [whyRecs,        setWhyRecs]        = useState<RecommendedProduct[]>([]);
   const [recsLoading,    setRecsLoading]    = useState(true);
 
-  // Load product detail
+  // Load product detail asynchronously in background
   useEffect(() => {
     if (!id) return;
-    if (!stateProduct) setProdLoading(true);
+    if (stateProduct) {
+      setProduct(stateProduct);
+      setProdLoading(false);
+    } else {
+      setProdLoading(true);
+    }
+
     getProductDetail(id)
       .then((data) => {
-        // If data is mock (Sony) but we have a state product, keep state product.
-        if (data.product_name === 'Sony WH-1000XM5 Wireless Headphones' && stateProduct && stateProduct.product_id === id) {
-          setProduct({ ...data, ...stateProduct, specifications: data.specifications || stateProduct.specifications, reviews_summary: data.reviews_summary });
-        } else {
-          setProduct(data);
-        }
+        setProduct((prev) => {
+          const merged = { ...data, ...(prev || {}) };
+          // Preserve authentic image_url and product_name from state if present
+          if (prev?.image_url) merged.image_url = prev.image_url;
+          if (prev?.product_name && prev.product_name !== 'Sony WH-1000XM5 Wireless Headphones') {
+            merged.product_name = prev.product_name;
+          }
+          return merged;
+        });
       })
       .catch(console.warn)
       .finally(() => setProdLoading(false));
@@ -151,9 +156,8 @@ export function ProductDetailPage() {
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
-  const images = product?.images?.length 
-    ? product.images 
-    : (product?.image_url ? [product.image_url] : PLACEHOLDER_IMAGES);
+  const mainProductImg = product?.image_url || (product as any)?.img_link || DEFAULT_FALLBACK_IMAGE;
+  const images = [mainProductImg];
   const discount = product?.discount_percent || (
     product?.discounted_price && product?.price
       ? Math.round((1 - product.discounted_price / product.price) * 100)
@@ -215,28 +219,35 @@ export function ProductDetailPage() {
         <div className="w-96 shrink-0">
           {/* Thumbnails + Main Image */}
           <div className="flex gap-3">
-            {/* Thumbnails */}
-            <div className="flex flex-col gap-2">
-              {images.slice(0, 5).map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveImage(idx)}
-                  className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all ${
-                    activeImage === idx ? 'border-primary-500 shadow-md' : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <img src={img} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
+              {/* Thumbnails */}
+              {images.length > 1 && (
+                <div className="flex flex-col gap-2">
+                  {images.slice(0, 5).map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImage(idx)}
+                      className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all ${
+                        activeImage === idx ? 'border-primary-500 shadow-md' : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <img
+                        src={img}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_FALLBACK_IMAGE; }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
 
             {/* Main image */}
             <div className="flex-1 relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 group">
               <img
-                src={images[activeImage] || PLACEHOLDER_IMAGES[0]}
+                src={images[activeImage] || DEFAULT_FALLBACK_IMAGE}
                 alt={product.product_name}
-                className="w-full h-80 object-contain p-12"
-                onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGES[0]; }}
+                className="w-full h-80 object-contain p-6"
+                onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_FALLBACK_IMAGE; }}
               />
               {product.badge && (
                 <span className="absolute top-3 left-3 bg-green-500 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full">

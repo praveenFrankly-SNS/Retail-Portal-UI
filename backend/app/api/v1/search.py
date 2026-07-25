@@ -29,7 +29,7 @@ async def search_products(request: SearchRequest):
             page_size=request.page_size,
             filters=request.filters,
             use_cache=request.use_cache,
-            dataset=request.dataset or "wands",
+            dataset=request.dataset or "amazon",
         )
         return result
 
@@ -54,7 +54,7 @@ async def search_products_get(
     min_price: Optional[float] = Query(default=None, description="Minimum price"),
     max_price: Optional[float] = Query(default=None, description="Maximum price"),
     min_rating: Optional[float] = Query(default=None, description="Minimum rating"),
-    dataset: str = Query(default="wands", description="Dataset variant: 'wands' or 'amazon'"),
+    dataset: str = Query(default="amazon", description="Dataset variant: 'wands' or 'amazon'"),
     use_cache: bool = Query(default=True, description="Use cache"),
 ):
     """

@@ -17,10 +17,10 @@ import { MainLayout } from '../../components/layout/MainLayout';
 import { RecommendationRow } from '../../components/recommendation/RecommendationRow';
 import { RecommendationPanel } from '../../components/recommendation/RecommendationPanel';
 import { getHomeRecommendations } from '../../api/recommendationApi';
-import { getTrendingProducts } from '../../api/productApi';
+import { getTrendingProducts, getProductDetail } from '../../api/productApi';
 import { useUserStore } from '../../store/userStore';
 import type { RecommendedProduct } from '../../types/recommendation';
-import type { Product } from '../../types/product';
+import type { Product, ProductDetail } from '../../types/product';
 
 const QUICK_SEARCHES = [
   'Ergonomic office chair',
@@ -49,17 +49,20 @@ export function HomePage() {
   const [selectedProduct, setSelectedProduct] = useState<RecommendedProduct | null>(null);
   const [homeRecs,  setHomeRecs]  = useState<RecommendedProduct[]>([]);
   const [trending,  setTrending]  = useState<Product[]>([]);
+  const [recentViewProducts, setRecentViewProducts] = useState<ProductDetail[]>([]);
   const [recsLoading,     setRecsLoading]     = useState(true);
   const [trendingLoading, setTrendingLoading] = useState(true);
 
   // Live recommendations whenever active customer / session changes
+  const sessionKey = `${activeCustomer?.customer_id || 'default'}:${(sessionContext?.recent_searches || []).join(',')}:${(sessionContext?.recent_views || []).join(',')}:${(sessionContext?.cart || []).join(',')}`;
+
   useEffect(() => {
     setRecsLoading(true);
     getHomeRecommendations(activeCustomer.customer_id, sessionContext)
       .then((res) => setHomeRecs(res.recommendations))
       .catch((err) => console.warn(err))
       .finally(() => setRecsLoading(false));
-  }, [activeCustomer.customer_id, sessionContext]);
+  }, [sessionKey]);
 
   // Trending products (once per mount)
   useEffect(() => {
@@ -69,6 +72,17 @@ export function HomePage() {
       .catch((err) => console.warn(err))
       .finally(() => setTrendingLoading(false));
   }, []);
+
+  // Fetch real details for Recently Viewed items
+  useEffect(() => {
+    const ids = sessionContext.recent_views.slice(0, 6);
+    if (ids.length === 0) {
+      setRecentViewProducts([]);
+      return;
+    }
+    Promise.all(ids.map((id) => getProductDetail(id).catch(() => null)))
+      .then((prods) => setRecentViewProducts(prods.filter(Boolean) as ProductDetail[]));
+  }, [sessionContext.recent_views]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,7 +256,7 @@ export function HomePage() {
       </section>
 
       {/* ── Recently Viewed ─────────────────────────────────── */}
-      {recentlyViewed.length > 0 && (
+      {sessionContext.recent_views.length > 0 && (
         <section className="mb-10">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -254,19 +268,31 @@ export function HomePage() {
             </Link>
           </div>
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {recentlyViewed.map((productId, idx) => (
-              <div
-                key={idx}
-                onClick={() => navigate(`/products/${productId}`)}
-                className="shrink-0 w-36 p-3 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5"
-              >
-                <div className="w-full h-24 rounded-xl bg-slate-100 flex items-center justify-center mb-2">
-                  <span className="text-slate-300 text-xs text-center px-1">Product</span>
+            {sessionContext.recent_views.slice(0, 6).map((productId, idx) => {
+              const prod = recentViewProducts.find((p) => p.product_id === productId);
+              return (
+                <div
+                  key={idx}
+                  onClick={() => navigate(`/products/${productId}`)}
+                  className="shrink-0 w-36 p-3 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5"
+                >
+                  <div className="w-full h-24 rounded-xl bg-slate-50 flex items-center justify-center mb-2 overflow-hidden p-2">
+                    {prod?.image_url ? (
+                      <img
+                        src={prod.image_url}
+                        alt={prod.product_name}
+                        className="w-full h-full object-contain mix-blend-multiply"
+                      />
+                    ) : (
+                      <span className="text-slate-300 text-xs text-center px-1 font-medium">Product</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-700 truncate">{prod?.product_name || `ID: ${productId}`}</p>
+                  {prod?.price && <p className="text-[10px] font-bold text-primary-600">₹{prod.price.toLocaleString('en-IN')}</p>}
+                  <p className="text-[9px] text-slate-400 mt-0.5">{idx === 0 ? '2 mins ago' : `${idx + 1} hours ago`}</p>
                 </div>
-                <p className="text-[10px] font-bold text-slate-600 truncate">ID: {productId}</p>
-                <p className="text-[9px] text-slate-400 mt-0.5">{idx === 0 ? '2 mins ago' : `${idx + 1} hours ago`}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}

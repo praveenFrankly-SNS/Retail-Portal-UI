@@ -125,7 +125,9 @@ class RecommendationService:
             from src.recommendation.repositories.sql_customer_context_repository import SqlCustomerContextRepository
             from src.recommendation.recommendation_service import generate_recommendations
 
-            clean_host = settings.databricks_host.replace("https://", "").replace("http://", "")
+            clean_host = settings.databricks_host.rstrip("/")
+            if not clean_host.startswith("http"):
+                clean_host = f"https://{clean_host}"
             os.environ["DATABRICKS_HOST"] = clean_host
             os.environ["DATABRICKS_TOKEN"] = settings.resolved_token
 
@@ -162,11 +164,39 @@ class RecommendationService:
                 session_context=merged_context
             )
 
+            raw_recs = engine_response.get("recommendations", [])
+            rec_pids = [r.get("product_id") for r in raw_recs if r.get("product_id")]
+
+            # Look up real product details from Databricks SQL Warehouse
+            db_details = {}
+            if rec_pids:
+                try:
+                    from app.services.databricks_service import databricks_service
+                    import asyncio
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            import concurrent.futures
+                            with concurrent.futures.ThreadPoolExecutor() as executor:
+                                db_details = executor.submit(
+                                    lambda: asyncio.run(databricks_service.get_product_details(rec_pids))
+                                ).result()
+                        else:
+                            db_details = loop.run_until_complete(databricks_service.get_product_details(rec_pids))
+                    except Exception as loop_e:
+                        db_details = asyncio.run(databricks_service.get_product_details(rec_pids))
+                except Exception as db_e:
+                    logger.warning("Could not fetch DB product details for recommendations", error=str(db_e))
+
             enriched_recs = []
-            for rec in engine_response.get("recommendations", []):
+            for rec in raw_recs:
+                pid = rec.get("product_id")
+                db_p = db_details.get(pid, {}) if pid else {}
+
                 price_tier = rec.get("price_tier", "MEDIUM").upper()
-                if rec.get("price"):
-                    price = float(rec["price"])
+                real_price = db_p.get("discounted_price") or db_p.get("price") or rec.get("price")
+                if real_price:
+                    price = float(real_price)
                 else:
                     if "LOW" in price_tier:
                         price = 1499
@@ -175,11 +205,11 @@ class RecommendationService:
                     else:
                         price = 7699
 
-                raw_image = rec.get("image_url", "")
+                raw_image = db_p.get("image_url") or db_p.get("img_link") or rec.get("image_url") or rec.get("img_link") or ""
                 if raw_image and raw_image.startswith("http"):
                     img = raw_image
                 else:
-                    prod_name = rec.get("product_name", "").lower()
+                    prod_name = (db_p.get("product_name") or rec.get("product_name") or "").lower()
                     if "keyboard" in prod_name:
                         img = "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&h=400&fit=crop"
                     elif "headphone" in prod_name or "earphone" in prod_name or "audio" in prod_name:
@@ -194,12 +224,12 @@ class RecommendationService:
                         img = "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=400&fit=crop"
 
                 enriched_recs.append({
-                    "product_id": rec.get("product_id"),
-                    "product_name": rec.get("product_name"),
-                    "brand": rec.get("brand_name") or rec.get("brand") or "Generic",
+                    "product_id": pid,
+                    "product_name": db_p.get("product_name") or rec.get("product_name"),
+                    "brand": db_p.get("brand_name") or db_p.get("brand") or rec.get("brand_name") or rec.get("brand") or "Generic",
                     "price": price,
-                    "rating": float(rec.get("rating", 4.5)),
-                    "rating_count": int(rec.get("rating_count", 850)),
+                    "rating": float(db_p.get("rating") or db_p.get("average_rating") or rec.get("rating", 4.5)),
+                    "rating_count": int(db_p.get("rating_count") or db_p.get("review_count") or rec.get("rating_count", 850)),
                     "image_url": img,
                     "relationship": rec.get("relationship"),
                     "concept": rec.get("concept"),

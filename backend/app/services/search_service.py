@@ -143,9 +143,11 @@ class SearchService:
         search_result["metadata"]["cached"] = False
 
         if use_cache:
-            await self.cache.set_search_results(
-                f"{dataset}:{normalized_query}", search_result, page, page_size, filters
-            )
+            has_fallback = any(r.get("product_name", "").startswith("Retail Product") for r in search_result.get("results", []))
+            if not has_fallback:
+                await self.cache.set_search_results(
+                    f"{dataset}:{normalized_query}", search_result, page, page_size, filters
+                )
 
         if total_time_ms > settings.slow_query_threshold_ms:
             logger.warning(
@@ -190,11 +192,17 @@ class SearchService:
         intent_tokens = vector_result.get("intent_tokens", [])
         model_name = vector_result.get("model_name", settings.embedding_model_endpoint)
 
-        # Similarity threshold filter
-        search_results = [
-            r for r in search_results
-            if r.get("similarity_score", 0) >= settings.similarity_threshold
-        ]
+        # Relevance check: determine if top matches contain actual query keywords or high similarity
+        query_words = [w for w in re.findall(r'\w+', query.lower()) if len(w) > 2 and w not in {"with", "for", "the", "and", "under", "toy", "toys"}]
+        has_exact = False
+        if search_results:
+            top_raw_score = max((r.get("similarity_score", 0) for r in search_results), default=0)
+            # Check if any top product title contains query keywords
+            any_keyword_in_title = any(
+                any(kw in str(r.get("product_name", "")).lower() for kw in query_words)
+                for r in search_results[:10]
+            ) if query_words else True
+            has_exact = top_raw_score >= 0.58 or any_keyword_in_title
 
         total_results = len(search_results)
         start_idx = (page - 1) * page_size
@@ -253,10 +261,13 @@ class SearchService:
             "metadata": {
                 "vector_search_time_ms": vector_time_ms,
                 "product_fetch_time_ms": products_time_ms,
+                "processing_time_ms": vector_time_ms + products_time_ms,
+                "cached": False,
                 "filters_applied": filters or {},
                 "rewritten_query": rewritten_query,
                 "intent_tokens": intent_tokens,
                 "model_name": model_name,
+                "has_exact_matches": has_exact,
             },
         }
 

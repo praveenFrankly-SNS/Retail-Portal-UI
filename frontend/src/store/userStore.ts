@@ -21,6 +21,7 @@ interface UserState {
   addSearchEvent: (query: string) => void;
   addViewEvent: (productId: string) => void;
   setCartItems: (productIds: string[]) => void;
+  clearActivityHistory: () => void;
   clearSessionContext: () => void;
 }
 
@@ -92,6 +93,18 @@ export const useUserStore = create<UserState>()(
           sessionContext: {
             ...state.sessionContext,
             cart_product_ids: productIds
+          }
+        }));
+      },
+
+      clearActivityHistory: () => {
+        const customerId = get().activeCustomer.customer_id;
+        import('../api/customerApi').then(m => m.clearCustomerHistory(customerId)).catch(() => {});
+        set((state) => ({
+          sessionContext: {
+            ...state.sessionContext,
+            recent_searches: [],
+            recent_views: [],
           }
         }));
       },

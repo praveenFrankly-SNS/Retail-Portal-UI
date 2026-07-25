@@ -94,7 +94,7 @@ async def get_products(
 ):
     """Get list of products matching catalog filters with pagination."""
     # Create deterministic cache key for catalog filters
-    qparams = request.query_params._dict if request else {}
+    qparams = dict(request.query_params) if request else {}
     hash_key = hashlib.md5(json.dumps(qparams, sort_keys=True).encode()).hexdigest()
     cache_key = f"catalog:products:{hash_key}"
     

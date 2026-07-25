@@ -94,4 +94,14 @@ class SessionService:
             logger.warning("Failed to retrieve customer context from Redis", error=str(e))
             return {"recent_searches": [], "recent_views": [], "cart": []}
 
+    def clear_history(self, customer_id: str):
+        if not self.enabled:
+            return
+        try:
+            self.redis.delete(self._key(customer_id, "recent_searches"))
+            self.redis.delete(self._key(customer_id, "recent_views"))
+            logger.info("Cleared customer activity history in Redis", customer_id=customer_id)
+        except RedisError as e:
+            logger.warning("Failed to clear customer history in Redis", error=str(e))
+
 session_service = SessionService()

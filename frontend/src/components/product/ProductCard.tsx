@@ -5,7 +5,8 @@
 // Supports: compact (row), grid (default), and mini modes
 // ============================================================
 
-import { ShoppingCart, Star, Heart, Info } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingCart, Star, Heart, Info, Package } from 'lucide-react';
 import { useCartStore } from '../../store/cartStore';
 import type { Product } from '../../types/product';
 import type { RecommendedProduct } from '../../types/recommendation';
@@ -46,7 +47,21 @@ function formatPrice(price: number | undefined | null): string {
   return `₹${price.toLocaleString('en-IN')}`;
 }
 
+function NoImagePlaceholder() {
+  return (
+    <div className="w-full h-full bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50/40 flex flex-col items-center justify-center p-3 relative overflow-hidden select-none">
+      <div className="w-10 h-10 rounded-2xl bg-white/90 backdrop-blur shadow-sm border border-slate-200/80 flex items-center justify-center text-slate-400 group-hover:text-primary-600 group-hover:scale-110 group-hover:border-primary-300 transition-all duration-300">
+        <Package size={20} className="stroke-[1.5] animate-pulse" />
+      </div>
+      <span className="text-[10px] font-bold text-slate-400 mt-1.5 tracking-wider uppercase group-hover:text-primary-600 transition-colors">
+        Retail Product
+      </span>
+    </div>
+  );
+}
+
 export function ProductCard({ product, variant = 'grid', onInfoClick, className = '' }: ProductCardProps) {
+  const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
 
   const rawPrice = product.price ?? (product as any).selling_price;
@@ -54,6 +69,14 @@ export function ProductCard({ product, variant = 'grid', onInfoClick, className 
   const hasDiscount = product.discounted_price && rawPrice && product.discounted_price < rawPrice;
   const isRec = isRecommendedProduct(product);
   const badge = product.badge;
+
+  const handleCardClick = () => {
+    if (isRec && onInfoClick) {
+      onInfoClick(product as RecommendedProduct);
+    } else if (product.product_id) {
+      navigate(`/products/${product.product_id}`, { state: { product } });
+    }
+  };
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -105,7 +128,8 @@ export function ProductCard({ product, variant = 'grid', onInfoClick, className 
   return (
     <div
       id={`product-card-${product.product_id}`}
-      className={`product-card flex flex-col cursor-pointer group ${className}`}
+      onClick={handleCardClick}
+      className={`product-card flex flex-col cursor-pointer group hover:shadow-lg transition-all duration-200 ${className}`}
     >
       {/* Image area */}
       <div className="relative h-32 sm:h-36 bg-gray-50 rounded-t-xl overflow-hidden flex items-center justify-center p-2">
@@ -125,11 +149,12 @@ export function ProductCard({ product, variant = 'grid', onInfoClick, className 
         {/* Info icon for recommendations */}
         {isRec && onInfoClick && (
           <button
-            className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center
-                       opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary-600"
+            title="View AI recommendation context"
+            className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/90 backdrop-blur shadow-md flex items-center justify-center
+                       text-primary-600 hover:bg-primary-600 hover:text-white transition-all"
             onClick={(e) => { e.stopPropagation(); onInfoClick(product as RecommendedProduct); }}
           >
-            <Info size={13} />
+            <Info size={14} />
           </button>
         )}
         {product.image_url ? (
@@ -137,9 +162,17 @@ export function ProductCard({ product, variant = 'grid', onInfoClick, className 
             src={product.image_url}
             alt={product.product_name}
             className="max-h-24 max-w-[80%] object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-300"
+            onError={(e) => {
+              // Swap broken image with fallback container
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              if (target.parentElement) {
+                target.parentElement.classList.add('p-0');
+              }
+            }}
           />
         ) : (
-          <div className="w-10 h-10 bg-gray-200 rounded-xl" />
+          <NoImagePlaceholder />
         )}
       </div>
 

@@ -24,32 +24,33 @@ class SearchRequest(BaseModel):
 class ProductResult(BaseModel):
     """Product search result model"""
     product_id: str
-    product_name: Optional[str]
-    description: Optional[str]
-    brand: Optional[str]
-    category: Optional[str]
-    price: Optional[float]
+    product_name: Optional[str] = None
+    description: Optional[str] = None
+    brand: Optional[str] = None
+    category: Optional[str] = None
+    price: Optional[float] = None
     currency: str = "INR"
-    attributes: Optional[Dict[str, Any]]
-    avg_rating: Optional[float]
+    attributes: Optional[Dict[str, Any]] = None
+    avg_rating: Optional[float] = None
     review_count: int = 0
-    similarity_score: Optional[float]
-    image_url: Optional[str]
-    attribute_summary: Optional[str]
-    review_summary: Optional[str]
+    similarity_score: Optional[float] = None
+    image_url: Optional[str] = None
+    attribute_summary: Optional[str] = None
+    review_summary: Optional[str] = None
 
 
 class SearchMetadata(BaseModel):
     """Search metadata — includes LLM understanding results"""
-    vector_search_time_ms: int
-    product_fetch_time_ms: int
-    processing_time_ms: int
-    cached: bool
+    vector_search_time_ms: int = 0
+    product_fetch_time_ms: int = 0
+    processing_time_ms: int = 0
+    cached: bool = False
     filters_applied: Dict[str, Any] = {}
     # LLM-powered fields
     rewritten_query: Optional[str] = None
     intent_tokens: Optional[List[str]] = []
     model_name: Optional[str] = None
+    has_exact_matches: bool = True
 
 
 class SearchResponse(BaseModel):

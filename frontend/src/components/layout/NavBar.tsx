@@ -24,7 +24,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Home', path: '/', icon: Home },
-  { label: 'AI Search', path: '/search', icon: Sparkles },
+  { label: 'Product Search', path: '/search', icon: Search },
   { label: 'Catalog', path: '/catalog', icon: LayoutGrid },
   { label: 'Recommendations', path: '/recommendations', icon: Star },
   { label: 'Cart', path: '/cart', icon: ShoppingCart },

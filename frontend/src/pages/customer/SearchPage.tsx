@@ -3,9 +3,9 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ProductCard } from '@/components/customer/ProductCard'
 import { FilterSidebar } from '@/components/customer/FilterSidebar'
-import { SearchMetaBar } from '@/components/customer/SearchMetaBar'
 import { searchApi } from '@/api/searchApi'
 import { useSearchStore } from '@/store/useSearchStore'
+import { MainLayout } from '../../components/layout/MainLayout'
 import { NavBar } from '../../components/layout/NavBar'
 import { useUserStore } from '../../store/userStore'
 import { getRecommendations } from '../../api/recommendationApi'
@@ -62,14 +62,11 @@ export function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <NavBar />
-
-      {/* ── Content ───────────────────────────────────────────────────── */}
-      <div className="flex-1 max-w-7xl mx-auto px-6 py-8 w-full flex flex-col md:flex-row gap-8">
-        {/* Sidebar */}
+    <MainLayout showRightSidebar={false}>
+      <div className="flex flex-col md:flex-row gap-8 w-full">
+        {/* Filter Sidebar */}
         {showFilters && query && (
-          <aside>
+          <aside className="w-64 shrink-0">
             <button
               onClick={() => navigate('/')}
               className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 mb-5 transition-colors"
@@ -95,26 +92,16 @@ export function SearchPage() {
             <ErrorState error={error} />
           ) : data && sortedResults.length > 0 ? (
             <div className="space-y-5">
-              {/* Results header + meta */}
+              {/* Results header */}
               <div>
-                <h2 className="text-2xl font-extrabold text-slate-900">Search Results</h2>
+                <h2 className="text-2xl font-extrabold text-slate-900">
+                  {data.metadata?.has_exact_matches === false ? 'Similar & Alternative Products' : 'Search Results'}
+                </h2>
                 <p className="text-sm text-slate-500 mt-0.5">
-                  Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.total_results)} of{' '}
-                  <span className="font-semibold">{data.total_results.toLocaleString()}</span> results for{' '}
+                  Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.total_results)} results for{' '}
                   <span className="text-blue-600 font-semibold">"{query}"</span>
                 </p>
               </div>
-
-              {/* SearchMetaBar — real Databricks LLM data */}
-              <SearchMetaBar
-                totalResults={data.total_results}
-                processingTimeMs={data.metadata.processing_time_ms}
-                cached={data.metadata.cached}
-                query={query}
-                rewrittenQuery={data.metadata.rewritten_query}
-                intentTokens={data.metadata.intent_tokens ?? []}
-                modelName={data.metadata.model_name}
-              />
 
               {/* Toolbar */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -148,14 +135,27 @@ export function SearchPage() {
                 </div>
               </div>
 
+              {/* Low-confidence fallback notice */}
+              {data.metadata?.has_exact_matches === false && (
+                <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-amber-100 text-amber-700 shrink-0 mt-0.5">
+                    <Sparkle size={18} weight="fill" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-amber-950">No exact matches found for "{query}"</h4>
+                    <p className="text-xs text-amber-800 leading-relaxed mt-0.5">
+                      Our catalog doesn't currently carry exact items matching "{query}". Showing similar alternative products below:
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Product Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {sortedResults.map((product, idx) => (
+                {sortedResults.map((product) => (
                   <ProductCard
                     key={product.product_id}
                     product={product}
-                    showScore
-                    isBestMatch={idx === 0 && page === 1 && sortBy === 'relevant'}
                   />
                 ))}
               </div>
@@ -174,7 +174,7 @@ export function SearchPage() {
           )}
         </main>
       </div>
-    </div>
+    </MainLayout>
   )
 }
 

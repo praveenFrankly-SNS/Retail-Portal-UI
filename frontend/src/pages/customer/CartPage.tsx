@@ -20,7 +20,7 @@ import { useCartStore } from '../../store/cartStore';
 import { useUserStore } from '../../store/userStore';
 import type { RecommendedProduct } from '../../types/recommendation';
 
-const FREE_DELIVERY_THRESHOLD = 3000;
+const FREE_DELIVERY_THRESHOLD = 500;
 
 export function CartPage() {
   const navigate = useNavigate();
