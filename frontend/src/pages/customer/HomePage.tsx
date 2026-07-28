@@ -1,17 +1,17 @@
 // ============================================================
-// HomePage — Retail AI Portal (WF-02)
-// Hero + Recommended For You (live) + Trending + Categories
-// + Recently Viewed + Feature Strip + Footer
-// No mock data — live Databricks recommendations with graceful fallback.
+// HomePage — Retail AI Portal (/home)
+// Hero + Trending (priority load) + Recommended For You (deferred)
+// + Shop by Category + Recently Viewed + Feature Strip + Footer
+// Live Databricks data only — real error states shown, no mock.
 // ============================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Sparkles, ArrowRight, Zap, Brain, Shield,
   Laptop, Monitor, Headphones, Smartphone, Settings,
-  HardDrive, Wifi, HelpCircle, Search, Clock, FlaskConical,
-  Home as HomeIcon, Mail,
+  HardDrive, Wifi, HelpCircle, Search, Clock, LayoutGrid,
+  Home as HomeIcon, AlertCircle,
 } from 'lucide-react';
 import { MainLayout } from '../../components/layout/MainLayout';
 import { RecommendationRow } from '../../components/recommendation/RecommendationRow';
@@ -50,36 +50,66 @@ export function HomePage() {
   const [homeRecs,  setHomeRecs]  = useState<RecommendedProduct[]>([]);
   const [trending,  setTrending]  = useState<Product[]>([]);
   const [recentViewProducts, setRecentViewProducts] = useState<ProductDetail[]>([]);
+
   const [recsLoading,     setRecsLoading]     = useState(true);
+  const [recsError,       setRecsError]       = useState<string | null>(null);
   const [trendingLoading, setTrendingLoading] = useState(true);
+  const [trendingError,   setTrendingError]   = useState<string | null>(null);
 
-  // Live recommendations whenever active customer / session changes
-  const sessionKey = `${activeCustomer?.customer_id || 'default'}:${(sessionContext?.recent_searches || []).join(',')}:${(sessionContext?.recent_views || []).join(',')}:${(sessionContext?.cart || []).join(',')}`;
+  // Abort controller ref to cancel stale recommendation requests
+  const recsAbortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    setRecsLoading(true);
-    getHomeRecommendations(activeCustomer.customer_id, sessionContext)
-      .then((res) => setHomeRecs(res.recommendations))
-      .catch((err) => console.warn(err))
-      .finally(() => setRecsLoading(false));
-  }, [sessionKey]);
+  // Session key — re-fetch recs only when meaningful context changes
+  const sessionKey = `${activeCustomer?.customer_id || 'default'}:${(sessionContext?.recent_searches || []).slice(0, 3).join(',')}:${(sessionContext?.recent_views || []).slice(0, 3).join(',')}`;
 
-  // Trending products (once per mount)
+  // Trending products — priority load (fast, no personalization needed)
   useEffect(() => {
     setTrendingLoading(true);
-    getTrendingProducts(6)
+    setTrendingError(null);
+    getTrendingProducts(8)
       .then((res) => setTrending(res))
-      .catch((err) => console.warn(err))
+      .catch((err) => {
+        console.warn('Trending fetch failed:', err);
+        setTrendingError(err?.message || 'Failed to fetch trending products from Databricks.');
+      })
       .finally(() => setTrendingLoading(false));
   }, []);
+
+  // Personalized recommendations — deferred, abortable
+  useEffect(() => {
+    // Cancel previous in-flight request
+    if (recsAbortRef.current) {
+      recsAbortRef.current.abort();
+    }
+    const ctrl = new AbortController();
+    recsAbortRef.current = ctrl;
+
+    setRecsLoading(true);
+    setRecsError(null);
+
+    getHomeRecommendations(activeCustomer.customer_id, sessionContext)
+      .then((res) => {
+        if (!ctrl.signal.aborted) {
+          setHomeRecs(res.recommendations);
+        }
+      })
+      .catch((err) => {
+        if (!ctrl.signal.aborted) {
+          console.warn('Home recs fetch failed:', err);
+          setRecsError(err?.message || 'Failed to fetch recommendations from Databricks.');
+        }
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setRecsLoading(false);
+      });
+
+    return () => ctrl.abort();
+  }, [sessionKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch real details for Recently Viewed items
   useEffect(() => {
     const ids = sessionContext.recent_views.slice(0, 6);
-    if (ids.length === 0) {
-      setRecentViewProducts([]);
-      return;
-    }
+    if (ids.length === 0) { setRecentViewProducts([]); return; }
     Promise.all(ids.map((id) => getProductDetail(id).catch(() => null)))
       .then((prods) => setRecentViewProducts(prods.filter(Boolean) as ProductDetail[]));
   }, [sessionContext.recent_views]);
@@ -97,62 +127,85 @@ export function HomePage() {
     navigate(`/search?q=${encodeURIComponent(q)}`);
   };
 
-  // Recently viewed from session context
-  const recentlyViewed = sessionContext.recent_views.slice(0, 6);
-
   return (
     <MainLayout showRightSidebar={true}>
 
-      {/* ── Hero Section ────────────────────────────────────── */}
-      <section className="relative mb-8 rounded-3xl overflow-hidden bg-gradient-to-br from-primary-50 via-white to-indigo-50 border border-slate-200 shadow-sm">
-        <div className="flex flex-col lg:flex-row items-center gap-8 px-6 py-8 sm:px-10 sm:py-10">
+      {/* ── Hero Section ──────────────────────────────────────────── */}
+      <section
+        className="relative mb-8 rounded-2xl overflow-hidden border"
+        style={{
+          background: 'linear-gradient(135deg, #eef2ff 0%, #ffffff 50%, #faf5ff 100%)',
+          borderColor: 'var(--border)',
+        }}
+      >
+        <div className="flex flex-col lg:flex-row items-center gap-8 px-6 py-8 sm:px-8 sm:py-10">
 
           {/* Left content */}
           <div className="flex-1 max-w-xl">
             {/* AI badge */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-100 border border-primary-200 mb-4">
-              <Sparkles size={12} className="text-primary-600 animate-pulse" />
-              <span className="text-xs font-semibold text-primary-700">AI-Powered Experience</span>
+            <div className="ai-badge mb-4 inline-flex">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+              AI-Powered Experience
             </div>
 
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight mb-3">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight mb-3" style={{ letterSpacing: '-0.02em' }}>
               Find the Perfect Product,{' '}
-              <span className="text-primary-600">Just by Describing It</span>
-            </h2>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
-              Search in natural language and discover products smarter, faster and more relevant than ever.
+              <span style={{ color: 'var(--primary)' }}>Just by Describing It</span>
+            </h1>
+            <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              Search in natural language and discover products smarter, faster and more relevant than ever — powered by Databricks Vector Search.
             </p>
 
             {/* Search Bar */}
-            <form onSubmit={handleSearch} className="relative">
-              <div className="flex items-center bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden p-1.5 focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-100 transition-all">
-                <Sparkles size={17} className="ml-3 text-primary-400 shrink-0" />
+            <form onSubmit={handleSearch} role="search" aria-label="Product search">
+              <div className="search-bar p-1.5" style={{ borderRadius: '12px', height: '56px' }}>
+                <Sparkles size={16} className="ml-2 shrink-0" style={{ color: 'var(--primary)' }} />
                 <input
                   id="hero-search-input"
-                  type="text"
+                  type="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder='Try "lightweight laptop for remote work", "noise cancelling headphones"'
-                  className="flex-1 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none"
+                  placeholder='Try "lightweight laptop for remote work"'
+                  className="flex-1 px-3 text-sm bg-transparent focus:outline-none"
+                  style={{ color: 'var(--text-primary)' }}
+                  aria-label="Search for products"
                 />
                 <button
                   type="submit"
                   id="hero-search-btn"
-                  className="px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 active:scale-95 transition-all flex items-center gap-2"
+                  className="px-5 py-2 rounded-lg text-white text-sm font-semibold flex items-center gap-2 transition-colors shrink-0"
+                  style={{ background: 'var(--primary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--primary-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'var(--primary)'}
+                  aria-label="Submit search"
                 >
                   <Search size={14} />
+                  Search
                 </button>
               </div>
             </form>
 
             {/* Quick searches */}
-            <div className="flex flex-wrap items-center gap-2 mt-4">
-              <span className="text-xs text-slate-400 font-semibold">Try these searches:</span>
+            <div className="flex flex-wrap items-center gap-2 mt-4" role="group" aria-label="Suggested searches">
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-subtle)' }}>Try:</span>
               {QUICK_SEARCHES.map((q) => (
                 <button
                   key={q}
                   onClick={() => handleQuickSearch(q)}
-                  className="px-3 py-1 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:border-primary-300 hover:text-primary-600 transition-all"
+                  className="px-3 py-1 rounded-full border text-xs font-medium transition-all"
+                  style={{
+                    borderColor: 'var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--text-secondary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#818cf8';
+                    e.currentTarget.style.color = 'var(--primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }}
                 >
                   {q}
                 </button>
@@ -163,31 +216,34 @@ export function HomePage() {
           {/* Right: floating product images */}
           <div className="hidden lg:flex items-center justify-center gap-4 shrink-0 relative mr-4">
             <div className="relative">
-              <div className="w-52 h-44 rounded-3xl overflow-hidden shadow-xl border border-slate-100">
+              <div className="w-48 h-40 rounded-2xl overflow-hidden shadow-lg border" style={{ borderColor: 'var(--border)' }}>
                 <img
                   src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=350&fit=crop"
-                  alt="Laptop"
+                  alt="Laptop product"
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </div>
               <div
-                className="absolute -bottom-4 -left-8 w-24 h-24 rounded-2xl overflow-hidden shadow-lg border border-slate-100 animate-bounce"
-                style={{ animationDuration: '6s' }}
+                className="absolute -bottom-4 -left-8 w-22 h-22 rounded-xl overflow-hidden shadow-lg border animate-[float_6s_ease-in-out_infinite]"
+                style={{ borderColor: 'var(--border)', width: '88px', height: '88px' }}
               >
                 <img
                   src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop"
-                  alt="Headphones"
+                  alt="Headphones product"
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </div>
               <div
-                className="absolute -top-4 -right-6 w-20 h-20 rounded-2xl overflow-hidden shadow-lg border border-slate-100 animate-bounce"
-                style={{ animationDuration: '8s' }}
+                className="absolute -top-4 -right-6 w-20 h-20 rounded-xl overflow-hidden shadow-lg border animate-[float_8s_ease-in-out_2s_infinite]"
+                style={{ borderColor: 'var(--border)' }}
               >
                 <img
                   src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop"
-                  alt="Watch"
+                  alt="Watch product"
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </div>
             </div>
@@ -195,42 +251,74 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ── Recommended For You (live) ──────────────────────── */}
+      {/* ── Trending Products (priority, loads first) ──────────────── */}
       <section className="mb-10">
-        <RecommendationRow
-          id="home-recs"
-          title="Recommended For You"
-          subtitle={`AI-powered recommendations based on ${activeCustomer.customer_name}'s activity and interests`}
-          items={homeRecs}
-          isAI
-          isLoading={recsLoading}
-          onViewAll={() => navigate('/recommendations')}
-          onInfoClick={(p) => setSelectedProduct(p)}
-        />
+        {trendingError ? (
+          <div
+            className="flex items-start gap-3 p-4 rounded-xl border"
+            style={{ background: '#fff7ed', borderColor: '#fed7aa' }}
+            role="alert"
+          >
+            <AlertCircle size={18} className="text-orange-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-orange-900">Unable to fetch trending products from Databricks</p>
+              <p className="text-xs text-orange-700 mt-0.5 leading-relaxed">{trendingError}</p>
+            </div>
+          </div>
+        ) : (
+          <RecommendationRow
+            id="trending"
+            title="Trending Products"
+            subtitle="Popular items people are searching and buying right now"
+            items={trending as any}
+            isAI={false}
+            isLoading={trendingLoading}
+            onViewAll={() => navigate('/catalog?sort=popularity')}
+          />
+        )}
       </section>
 
-      {/* ── Trending Products (live) ────────────────────────── */}
+      {/* ── Recommended For You (live, deferred) ──────────────────── */}
       <section className="mb-10">
-        <RecommendationRow
-          id="trending"
-          title="Trending Products"
-          subtitle="Popular items people are searching and buying right now"
-          items={trending as any}
-          isAI={false}
-          isLoading={trendingLoading}
-          onViewAll={() => navigate('/catalog?sort=popularity')}
-        />
+        {recsError ? (
+          <div
+            className="flex items-start gap-3 p-4 rounded-xl border"
+            style={{ background: '#fef2f2', borderColor: '#fecaca' }}
+            role="alert"
+          >
+            <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-900">Recommendations unavailable</p>
+              <p className="text-xs text-red-700 mt-0.5 leading-relaxed">{recsError}</p>
+            </div>
+          </div>
+        ) : (
+          <RecommendationRow
+            id="home-recs"
+            title="Recommended For You"
+            subtitle={`AI-powered recommendations based on ${activeCustomer.customer_name}'s activity and interests`}
+            items={homeRecs}
+            isAI
+            isLoading={recsLoading}
+            onViewAll={() => navigate('/recommendations')}
+            onInfoClick={(p) => setSelectedProduct(p)}
+          />
+        )}
       </section>
 
-      {/* ── Shop by Category ───────────────────────────────── */}
+      {/* ── Shop by Category ────────────────────────────────────────── */}
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="section-heading">Shop by Category</h2>
+          <h2 className="section-heading">
+            <LayoutGrid size={18} style={{ color: 'var(--text-muted)' }} />
+            Shop by Category
+          </h2>
           <button
             onClick={() => navigate('/catalog')}
-            className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1"
+            className="text-xs font-semibold flex items-center gap-1 hover:underline transition-colors"
+            style={{ color: 'var(--primary)' }}
           >
-            View all categories <ArrowRight size={13} />
+            View all <ArrowRight size={12} />
           </button>
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-3">
@@ -241,12 +329,29 @@ export function HomePage() {
                 key={idx}
                 id={`category-btn-${idx}`}
                 onClick={() => navigate(`/catalog?category=${encodeURIComponent(cat.query)}`)}
-                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 w-full group"
+                className="flex flex-col items-center gap-2 p-3 rounded-xl border w-full group transition-all"
+                style={{
+                  background: 'var(--surface)',
+                  borderColor: 'var(--border)',
+                  boxShadow: 'var(--shadow-card)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = 'var(--shadow-hover)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = 'var(--shadow-card)';
+                  e.currentTarget.style.transform = 'none';
+                }}
+                aria-label={`Browse ${cat.name}`}
               >
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-500 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
-                  <Icon size={20} />
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+                  style={{ background: 'var(--surface-secondary)' }}
+                >
+                  <Icon size={18} style={{ color: 'var(--text-muted)' }} />
                 </div>
-                <span className="text-[10px] font-bold text-slate-700 text-center leading-tight line-clamp-2">
+                <span className="text-[10px] font-semibold text-center leading-tight line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
                   {cat.name}
                 </span>
               </button>
@@ -255,41 +360,62 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ── Recently Viewed ─────────────────────────────────── */}
+      {/* ── Recently Viewed ──────────────────────────────────────────── */}
       {sessionContext.recent_views.length > 0 && (
         <section className="mb-10">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Clock size={18} className="text-slate-400" />
-              <h2 className="section-heading">Recently Viewed</h2>
-            </div>
-            <Link to="/profile" className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1">
-              View all <ArrowRight size={13} />
+            <h2 className="section-heading">
+              <Clock size={16} style={{ color: 'var(--text-muted)' }} />
+              Recently Viewed
+            </h2>
+            <Link
+              to="/profile"
+              className="text-xs font-semibold flex items-center gap-1 hover:underline"
+              style={{ color: 'var(--primary)' }}
+            >
+              View all <ArrowRight size={12} />
             </Link>
           </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1" role="list" aria-label="Recently viewed products">
             {sessionContext.recent_views.slice(0, 6).map((productId, idx) => {
               const prod = recentViewProducts.find((p) => p.product_id === productId);
               return (
                 <div
                   key={idx}
+                  role="listitem"
                   onClick={() => navigate(`/products/${productId}`)}
-                  className="shrink-0 w-36 p-3 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-0.5"
+                  className="shrink-0 w-36 p-3 rounded-xl border cursor-pointer transition-all card-hover"
+                  style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && navigate(`/products/${productId}`)}
+                  aria-label={prod?.product_name || `Product ${productId}`}
                 >
-                  <div className="w-full h-24 rounded-xl bg-slate-50 flex items-center justify-center mb-2 overflow-hidden p-2">
+                  <div
+                    className="w-full h-24 rounded-lg flex items-center justify-center mb-2 overflow-hidden p-2"
+                    style={{ background: 'var(--surface-secondary)' }}
+                  >
                     {prod?.image_url ? (
                       <img
                         src={prod.image_url}
                         alt={prod.product_name}
                         className="w-full h-full object-contain mix-blend-multiply"
+                        loading="lazy"
                       />
                     ) : (
-                      <span className="text-slate-300 text-xs text-center px-1 font-medium">Product</span>
+                      <span className="text-xs text-center font-medium" style={{ color: 'var(--text-subtle)' }}>Product</span>
                     )}
                   </div>
-                  <p className="text-[10px] font-bold text-slate-700 truncate">{prod?.product_name || `ID: ${productId}`}</p>
-                  {prod?.price && <p className="text-[10px] font-bold text-primary-600">₹{prod.price.toLocaleString('en-IN')}</p>}
-                  <p className="text-[9px] text-slate-400 mt-0.5">{idx === 0 ? '2 mins ago' : `${idx + 1} hours ago`}</p>
+                  <p className="text-[10px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                    {prod?.product_name || `ID: ${productId}`}
+                  </p>
+                  {prod?.price && (
+                    <p className="text-[10px] font-bold mt-0.5 font-mono" style={{ color: 'var(--primary)' }}>
+                      ₹{prod.price.toLocaleString('en-IN')}
+                    </p>
+                  )}
+                  <p className="text-[9px] mt-0.5" style={{ color: 'var(--text-subtle)' }}>
+                    {idx === 0 ? '2 mins ago' : `${idx + 1} hours ago`}
+                  </p>
                 </div>
               );
             })}
@@ -297,94 +423,99 @@ export function HomePage() {
         </section>
       )}
 
-      {/* ── Feature Strip ──────────────────────────────────── */}
-      <section className="rounded-3xl bg-white border border-slate-200 shadow-sm p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-100 mb-12">
+      {/* ── Feature Strip ─────────────────────────────────────────────── */}
+      <section
+        className="rounded-xl border p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-12"
+        style={{
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--shadow-card)',
+        }}
+        aria-label="Platform features"
+      >
         {[
-          { icon: Brain,    color: 'blue',   title: 'AI Semantic Search',       desc: 'Understand what you mean, not just keywords' },
-          { icon: Sparkles, color: 'purple', title: 'Smart Recommendations',    desc: 'Discover products you\'ll love before you search' },
-          { icon: Zap,      color: 'amber',  title: 'Real-time & Accurate',     desc: 'Results in under 2 seconds powered by AI' },
-          { icon: Shield,   color: 'emerald',title: 'Secure & Governed',        desc: 'Enterprise-grade security on Databricks' },
-        ].map(({ icon: Icon, color, title, desc }, i) => (
-          <div key={i} className={`flex items-start gap-3.5 ${i > 0 ? 'pt-4 md:pt-0 md:pl-6' : ''}`}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-${color}-50 text-${color}-600`}>
-              <Icon size={20} />
+          { icon: Brain,    color: '#0369a1', bg: '#e0f2fe', title: 'AI Semantic Search',       desc: 'Understand what you mean, not just keywords' },
+          { icon: Sparkles, color: '#7e22ce', bg: '#faf5ff', title: 'Smart Recommendations',    desc: 'Discover products you\'ll love before you search' },
+          { icon: Zap,      color: '#d97706', bg: '#fef3c7', title: 'Real-time & Accurate',     desc: 'Results in under 2 seconds powered by AI' },
+          { icon: Shield,   color: '#16a34a', bg: '#dcfce7', title: 'Secure & Governed',        desc: 'Enterprise-grade security on Databricks' },
+        ].map(({ icon: Icon, color, bg, title, desc }, i) => (
+          <div
+            key={i}
+            className={`flex items-start gap-3 ${i > 0 ? 'pt-4 md:pt-0 md:pl-6 md:border-l' : ''}`}
+            style={{ borderColor: 'var(--border-subtle)' }}
+          >
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: bg }}
+            >
+              <Icon size={18} style={{ color }} />
             </div>
             <div>
-              <p className="text-sm font-extrabold text-slate-900">{title}</p>
-              <p className="text-xs text-slate-500 mt-1 leading-snug">{desc}</p>
+              <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{title}</p>
+              <p className="text-xs mt-1 leading-snug" style={{ color: 'var(--text-muted)' }}>{desc}</p>
             </div>
           </div>
         ))}
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────── */}
-      <footer className="border-t border-slate-200 pt-8 pb-4">
+      {/* ── Footer ────────────────────────────────────────────────────── */}
+      <footer className="border-t pt-8 pb-4" style={{ borderColor: 'var(--border)' }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 mb-8">
           {/* Brand */}
-          <div className="col-span-1 md:col-span-1">
+          <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
-                <Sparkles size={14} className="text-white" />
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ background: 'var(--primary)' }}
+              >
+                <Sparkles size={12} className="text-white" />
               </div>
-              <span className="font-black text-slate-900 text-sm">Retail AI</span>
+              <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Retail AI Portal</span>
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              AI-powered product search and recommendation accelerator built on Databricks.
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              AI-powered product search and recommendation accelerator built on Databricks Vector Search and Model Serving.
+            </p>
+            <p className="text-[10px] mt-3" style={{ color: 'var(--text-subtle)' }}>
+              Built with Databricks · FastAPI · React · TypeScript
             </p>
           </div>
 
           {[
-            {
-              title: 'Product',
-              links: ['AI Search', 'Recommendations', 'Demo Lab', 'Catalog'],
-            },
-            {
-              title: 'Resources',
-              links: ['How it Works', 'Documentation', 'Case Studies', 'Blog'],
-            },
-            {
-              title: 'Company',
-              links: ['About Us', 'Contact', 'Careers', 'Privacy Policy'],
-            },
+            { title: 'Platform', links: ['AI Search', 'Recommendations', 'Demo Lab', 'Catalog'] },
+            { title: 'Resources', links: ['Documentation', 'How it Works', 'API Reference'] },
           ].map(({ title, links }) => (
             <div key={title}>
-              <h5 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-3">{title}</h5>
+              <h5 className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-primary)' }}>
+                {title}
+              </h5>
               <ul className="space-y-2">
                 {links.map((link) => (
                   <li key={link}>
-                    <span className="text-xs text-slate-500 hover:text-primary-600 cursor-pointer transition-colors">{link}</span>
+                    <span
+                      className="text-xs cursor-pointer transition-colors"
+                      style={{ color: 'var(--text-muted)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                    >
+                      {link}
+                    </span>
                   </li>
                 ))}
               </ul>
             </div>
           ))}
-
-          {/* Stay Updated */}
-          <div>
-            <h5 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-3">Stay Updated</h5>
-            <p className="text-xs text-slate-500 mb-3 leading-snug">
-              Get the latest updates and insights on AI-powered shopping.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-400 bg-slate-50"
-              />
-              <button className="px-3 py-2 rounded-xl bg-primary-600 text-white text-xs font-bold hover:bg-primary-700 transition-colors">
-                Subscribe
-              </button>
-            </div>
-          </div>
         </div>
 
-        <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-[10px] text-slate-400">
+        <div
+          className="border-t pt-4 flex flex-col sm:flex-row items-center justify-between gap-2"
+          style={{ borderColor: 'var(--border-subtle)' }}
+        >
+          <p className="text-[10px]" style={{ color: 'var(--text-subtle)' }}>
             © 2026 Retail AI Accelerator. All rights reserved.
           </p>
-          <div className="flex items-center gap-4 text-[10px] text-slate-400">
-            <span className="hover:text-slate-600 cursor-pointer">Terms of Service</span>
-            <span className="hover:text-slate-600 cursor-pointer">Privacy Policy</span>
+          <div className="flex items-center gap-4 text-[10px]" style={{ color: 'var(--text-subtle)' }}>
+            <span className="cursor-pointer hover:opacity-70 transition-opacity">Terms of Service</span>
+            <span className="cursor-pointer hover:opacity-70 transition-opacity">Privacy Policy</span>
           </div>
         </div>
       </footer>
@@ -394,3 +525,5 @@ export function HomePage() {
     </MainLayout>
   );
 }
+
+

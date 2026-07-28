@@ -10,11 +10,11 @@
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
-  ArrowLeft, Star, ShoppingCart, Heart, Share2,
-  CheckCircle, Truck, RefreshCcw, Shield, Sparkles,
-  Brain, ChevronRight, Minus, Plus, Package, Layers,
+  Star, ShoppingCart, Heart, Share2,
+  CheckCircle, Truck, Shield,
+  Brain, ChevronRight, Minus, Plus, Package,
   ZoomIn,
 } from 'lucide-react';
 import { MainLayout } from '../../components/layout/MainLayout';
@@ -83,7 +83,7 @@ export function ProductDetailPage() {
   const [selectedRec,    setSelectedRec]    = useState<RecommendedProduct | null>(null);
   const [similarRecs,    setSimilarRecs]    = useState<RecommendedProduct[]>([]);
   const [compRecs,       setCompRecs]       = useState<RecommendedProduct[]>([]);
-  const [accessoryRecs,  setAccessoryRecs]  = useState<RecommendedProduct[]>([]);
+  const [_accessoryRecs,  setAccessoryRecs]  = useState<RecommendedProduct[]>([]);
   const [altRecs,        setAltRecs]        = useState<RecommendedProduct[]>([]);
   const [whyRecs,        setWhyRecs]        = useState<RecommendedProduct[]>([]);
   const [recsLoading,    setRecsLoading]    = useState(true);

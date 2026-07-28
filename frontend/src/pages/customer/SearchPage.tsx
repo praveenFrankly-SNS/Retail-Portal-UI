@@ -6,7 +6,6 @@ import { FilterSidebar } from '@/components/customer/FilterSidebar'
 import { searchApi } from '@/api/searchApi'
 import { useSearchStore } from '@/store/useSearchStore'
 import { MainLayout } from '../../components/layout/MainLayout'
-import { NavBar } from '../../components/layout/NavBar'
 import { useUserStore } from '../../store/userStore'
 import { getRecommendations } from '../../api/recommendationApi'
 import { RecommendationRow } from '../../components/recommendation/RecommendationRow'
@@ -68,7 +67,7 @@ export function SearchPage() {
         {showFilters && query && (
           <aside className="w-64 shrink-0">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/home')}
               className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 mb-5 transition-colors"
             >
               <ArrowLeft size={16} weight="bold" />
@@ -95,7 +94,7 @@ export function SearchPage() {
               {/* Results header */}
               <div>
                 <h2 className="text-2xl font-extrabold text-slate-900">
-                  {data.metadata?.has_exact_matches === false ? 'Similar & Alternative Products' : 'Search Results'}
+                  {(data.metadata as any)?.has_exact_matches === false ? 'Similar & Alternative Products' : 'Search Results'}
                 </h2>
                 <p className="text-sm text-slate-500 mt-0.5">
                   Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.total_results)} results for{' '}
@@ -136,7 +135,7 @@ export function SearchPage() {
               </div>
 
               {/* Low-confidence fallback notice */}
-              {data.metadata?.has_exact_matches === false && (
+              {(data.metadata as any)?.has_exact_matches === false && (
                 <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3">
                   <div className="p-2 rounded-xl bg-amber-100 text-amber-700 shrink-0 mt-0.5">
                     <Sparkle size={18} weight="fill" />

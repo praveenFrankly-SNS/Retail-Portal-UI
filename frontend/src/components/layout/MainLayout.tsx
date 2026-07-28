@@ -1,10 +1,8 @@
 // ============================================================
-// MainLayout — Retail AI Portal (WF-01)
-// 3-column unified layout:
-//   Left: Sidebar navigation + Demo Customer switcher + AI Context Snapshot
-//   Top Bar: Global search, notifications, profile avatar, cart
-//   Center: Main page content
-//   Right (optional): AI Demo Lab promo + Activity + Trending + Why Retail AI
+// MainLayout — Retail AI Portal (Enterprise Layout)
+// 3-column: Left sidebar nav | Top header | Center content
+// Enterprise design: Plus Jakarta Sans, 44px nav items,
+// 6px nav spacing, clean active states, no decorative gradients
 // ============================================================
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -27,7 +25,6 @@ import {
   CheckCircle,
   Eye,
   Search,
-  User,
 } from 'lucide-react';
 import { useCartStore } from '../../store/cartStore';
 import { useUserStore } from '../../store/userStore';
@@ -46,15 +43,31 @@ interface NavItem {
   badge?: string;
 }
 
+// Using /home (industry standard for customer-facing portals)
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home',            path: '/',               icon: Home },
+  { label: 'Home',            path: '/home',           icon: Home },
   { label: 'Product Search',  path: '/search',         icon: Search },
   { label: 'Catalog',         path: '/catalog',        icon: LayoutGrid },
-  { label: 'Recommendations', path: '/recommendations',icon: Star },
+  { label: 'Recommendations', path: '/recommendations', icon: Star },
   { label: 'Cart',            path: '/cart',           icon: ShoppingCart },
   { label: 'Demo Lab',        path: '/demo-lab',       icon: FlaskConical, badge: 'New' },
   { label: 'Monitoring',      path: '/monitoring',     icon: BarChart2 },
   { label: 'About',           path: '/about',          icon: Info },
+];
+
+const NAV_GROUPS = [
+  {
+    label: 'DISCOVERY',
+    items: ['Home', 'Product Search', 'Catalog'],
+  },
+  {
+    label: 'PERSONALIZATION',
+    items: ['Recommendations', 'Cart'],
+  },
+  {
+    label: 'TOOLS',
+    items: ['Demo Lab', 'Monitoring', 'About'],
+  },
 ];
 
 const TRENDING_TERMS = [
@@ -116,113 +129,163 @@ export function MainLayout({ children, showRightSidebar = false }: MainLayoutPro
   };
 
   const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
+    if (path === '/home') return location.pathname === '/home' || location.pathname === '/';
     return location.pathname.startsWith(path);
   };
 
   const displayInterest = activeCustomer.interests?.slice(0, 3).join(', ') || 'General';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans">
+    <div className="min-h-screen flex" style={{ background: 'var(--background)', fontFamily: 'var(--font-sans)' }}>
 
-      {/* ── LEFT SIDEBAR ────────────────────────────────────────────── */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0 h-screen sticky top-0">
-        <div className="flex flex-col overflow-y-auto grow p-4">
+      {/* ── LEFT SIDEBAR ──────────────────────────────────────────────── */}
+      <aside
+        className="w-60 bg-white border-r flex flex-col shrink-0 h-screen sticky top-0"
+        style={{ borderColor: 'var(--border)' }}
+      >
+        <div className="flex flex-col overflow-y-auto grow px-3 py-4">
 
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 px-2 py-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center shadow-md shadow-primary-200">
-              <Sparkles className="w-5 h-5 text-white" />
+          <Link to="/" className="flex items-center gap-2.5 px-2 py-2 mb-5 group">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+              style={{ background: 'var(--primary)' }}
+            >
+              <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="text-base font-black text-slate-900 leading-tight">Retail AI</h1>
-              <p className="text-[10px] text-slate-400 font-bold leading-tight">Powered by Databricks</p>
+              <p className="text-sm font-bold text-slate-900 leading-none">Retail AI</p>
+              <p className="text-[10px] font-medium leading-none mt-0.5" style={{ color: 'var(--text-subtle)' }}>
+                Powered by Databricks
+              </p>
             </div>
           </Link>
 
-          {/* Navigation */}
-          <nav className="space-y-0.5 mb-8">
-            {NAV_ITEMS.map((item) => {
-              const Icon   = item.icon;
-              const active = isActive(item.path);
-              const isCart = item.label === 'Cart';
-
+          {/* Navigation Groups */}
+          <nav className="space-y-5 mb-6" aria-label="Main navigation">
+            {NAV_GROUPS.map((group) => {
+              const groupItems = NAV_ITEMS.filter((item) => group.items.includes(item.label));
               return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
-                    active
-                      ? 'bg-primary-50 text-primary-600 border border-primary-100/50 shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon size={18} className={active ? 'text-primary-600' : 'text-slate-400'} />
-                    <span>{item.label}</span>
+                <div key={group.label}>
+                  <p
+                    className="px-2 mb-1 text-[10px] font-semibold tracking-widest"
+                    style={{ color: 'var(--text-subtle)', textTransform: 'uppercase' }}
+                  >
+                    {group.label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {groupItems.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item.path);
+                      const isCart = item.label === 'Cart';
+
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          id={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                          className="flex items-center justify-between px-2 py-2 rounded-lg text-sm font-medium transition-all"
+                          style={{
+                            height: '36px',
+                            color: active ? 'var(--primary)' : 'var(--text-secondary)',
+                            background: active ? '#eef2ff' : 'transparent',
+                            fontWeight: active ? 600 : 500,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!active) {
+                              e.currentTarget.style.background = 'var(--surface-secondary)';
+                              e.currentTarget.style.color = 'var(--text-primary)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!active) {
+                              e.currentTarget.style.background = 'transparent';
+                              e.currentTarget.style.color = 'var(--text-secondary)';
+                            }
+                          }}
+                          aria-current={active ? 'page' : undefined}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Icon
+                              size={16}
+                              style={{ color: active ? 'var(--primary)' : 'var(--text-muted)' }}
+                            />
+                            <span>{item.label}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {isCart && cartCount > 0 && (
+                              <span
+                                className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                                style={{ background: 'var(--primary)', minWidth: '18px', textAlign: 'center' }}
+                              >
+                                {cartCount}
+                              </span>
+                            )}
+                            {item.badge && (
+                              <span className="ai-badge text-[9px] px-1.5 py-0.5">{item.badge}</span>
+                            )}
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
-                  <div className="flex items-center gap-1">
-                    {isCart && cartCount > 0 && (
-                      <span className="bg-primary-600 text-white text-xs font-black px-2 py-0.5 rounded-full">
-                        {cartCount}
-                      </span>
-                    )}
-                    {item.badge && (
-                      <span className="bg-accent-100 text-accent-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                </Link>
+                </div>
               );
             })}
           </nav>
 
           {/* AI Context Snapshot */}
-          <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 mt-auto mb-4">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+          <div
+            className="rounded-xl p-3 mt-auto mb-3"
+            style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
               AI Context Snapshot
-            </h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                  <Eye size={12} className="text-slate-400" /> Recent Views
-                </span>
-                <span className="font-bold text-slate-800">{sessionContext.recent_views.length} items</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                  <Search size={12} className="text-slate-400" /> Recent Searches
-                </span>
-                <span className="font-bold text-slate-800">{sessionContext.recent_searches.length} searches</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                  <ShoppingCart size={12} className="text-slate-400" /> Cart Items
-                </span>
-                <span className="font-bold text-slate-800">{sessionContext.cart_product_ids.length} items</span>
-              </div>
-              <div className="border-t border-slate-100 pt-2.5">
-                <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">Top Interest</span>
-                <span className="font-bold text-slate-700 truncate block max-w-full text-xs" title={displayInterest}>
+            </p>
+            <div className="space-y-1.5 text-xs">
+              {[
+                { icon: Eye, label: 'Recent Views', value: `${sessionContext.recent_views.length} items` },
+                { icon: Search, label: 'Recent Searches', value: `${sessionContext.recent_searches.length} searches` },
+                { icon: ShoppingCart, label: 'Cart Items', value: `${sessionContext.cart_product_ids.length} items` },
+              ].map(({ icon: Icon, label, value }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                    <Icon size={11} />
+                    {label}
+                  </span>
+                  <span className="font-semibold font-mono text-[11px]" style={{ color: 'var(--text-primary)' }}>
+                    {value}
+                  </span>
+                </div>
+              ))}
+              <div className="pt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                <p className="text-[10px] mb-0.5" style={{ color: 'var(--text-subtle)' }}>Top Interest</p>
+                <p className="font-semibold text-xs truncate" style={{ color: 'var(--text-primary)' }} title={displayInterest}>
                   {displayInterest}
-                </span>
+                </p>
               </div>
             </div>
-            <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 mt-3">
+            <div
+              className="flex items-center justify-between pt-2.5 mt-2 border-t"
+              style={{ borderColor: 'var(--border-subtle)' }}
+            >
               <Link
                 to="/profile"
-                className="text-[11px] font-bold text-primary-600 hover:text-primary-700"
+                className="text-[11px] font-semibold hover:underline"
+                style={{ color: 'var(--primary)' }}
               >
                 View profile →
               </Link>
               {(sessionContext.recent_views.length > 0 || sessionContext.recent_searches.length > 0) && (
                 <button
                   onClick={clearActivityHistory}
-                  className="text-[11px] font-bold text-slate-400 hover:text-red-500 transition-colors"
-                  title="Clear search and view history (keeps cart intact)"
+                  className="text-[11px] font-medium transition-colors"
+                  style={{ color: 'var(--text-subtle)' }}
+                  title="Clear search and view history"
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-subtle)'}
                 >
-                  Clear History
+                  Clear
                 </button>
               )}
             </div>
@@ -230,124 +293,193 @@ export function MainLayout({ children, showRightSidebar = false }: MainLayoutPro
         </div>
 
         {/* Demo Customer Switcher */}
-        <div className="p-4 border-t border-slate-100 bg-white relative" ref={switcherRef}>
-          <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-2 px-1">
+        <div
+          className="px-3 py-3 border-t bg-white relative"
+          style={{ borderColor: 'var(--border)' }}
+          ref={switcherRef}
+        >
+          <p
+            className="text-[9px] font-bold uppercase tracking-widest mb-2 px-1"
+            style={{ color: 'var(--text-subtle)' }}
+          >
             Demo Customer
           </p>
           <button
             onClick={() => setShowSwitcher(!showSwitcher)}
-            className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all text-left"
+            className="w-full flex items-center justify-between p-2 rounded-lg border transition-all text-left"
+            style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+            aria-expanded={showSwitcher}
+            aria-haspopup="listbox"
+            id="customer-switcher-btn"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-black text-xs flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0"
+                style={{ background: 'var(--primary)' }}
+                aria-hidden="true"
+              >
                 {activeCustomer.customer_name.charAt(0)}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-black text-slate-800 truncate leading-none">
+                <p className="text-sm font-semibold truncate leading-none" style={{ color: 'var(--text-primary)' }}>
                   {activeCustomer.customer_name}
                 </p>
-                <p className="text-[10px] text-slate-400 font-semibold mt-0.5 truncate">
+                <p className="text-[10px] mt-0.5 truncate leading-none" style={{ color: 'var(--text-muted)' }}>
                   {activeCustomer.persona_label || activeCustomer.customer_id}
                 </p>
               </div>
             </div>
             <ChevronDown
-              size={14}
-              className={`text-slate-400 transition-transform duration-200 ${showSwitcher ? 'rotate-180' : ''}`}
+              size={13}
+              style={{ color: 'var(--text-subtle)', transition: 'transform 200ms', transform: showSwitcher ? 'rotate(180deg)' : 'none' }}
             />
           </button>
 
           {showSwitcher && (
-            <div className="absolute bottom-20 left-4 right-4 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 max-h-60 overflow-y-auto">
-              <p className="text-[9px] font-extrabold text-slate-400 px-4 py-1.5 uppercase tracking-widest border-b border-slate-50 mb-1">
+            <div
+              className="absolute bottom-20 left-3 right-3 rounded-xl shadow-lg py-1.5 z-50 max-h-64 overflow-y-auto animate-slide-up"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-dropdown)' }}
+              role="listbox"
+              aria-label="Select demo customer"
+            >
+              <p
+                className="text-[9px] font-bold px-3 py-1.5 uppercase tracking-widest border-b mb-1"
+                style={{ color: 'var(--text-subtle)', borderColor: 'var(--border-subtle)' }}
+              >
                 Switch Persona
               </p>
-              {personas.map((p) => (
-                <button
-                  key={p.customer_id}
-                  onClick={() => { setActiveCustomer(p); setShowSwitcher(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold hover:bg-slate-50 transition-colors ${
-                    activeCustomer.customer_id === p.customer_id
-                      ? 'text-primary-600 bg-primary-50/60'
-                      : 'text-slate-700'
-                  }`}
-                >
-                  <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0">
-                    {p.customer_name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-900 leading-none text-sm">{p.customer_name}</p>
-                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{p.persona_label || p.customer_id}</p>
-                  </div>
-                  {activeCustomer.customer_id === p.customer_id && (
-                    <CheckCircle size={14} className="text-primary-500 ml-auto shrink-0" />
-                  )}
-                </button>
-              ))}
+              {personas.map((p) => {
+                const isSelected = activeCustomer.customer_id === p.customer_id;
+                return (
+                  <button
+                    key={p.customer_id}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => { setActiveCustomer(p); setShowSwitcher(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors"
+                    style={{
+                      color: isSelected ? 'var(--primary)' : 'var(--text-secondary)',
+                      background: isSelected ? '#eef2ff' : 'transparent',
+                    }}
+                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'var(--surface-secondary)'; }}
+                    onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <div
+                      className="w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0"
+                      style={{
+                        background: isSelected ? '#e0e7ff' : 'var(--surface-secondary)',
+                        color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
+                      }}
+                    >
+                      {p.customer_name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-xs leading-none truncate">{p.customer_name}</p>
+                      <p className="text-[10px] mt-0.5 leading-none truncate" style={{ color: 'var(--text-subtle)' }}>
+                        {p.persona_label || p.customer_id}
+                      </p>
+                    </div>
+                    {isSelected && <CheckCircle size={13} style={{ color: 'var(--primary)' }} className="shrink-0" />}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
       </aside>
 
-      {/* ── MAIN CONTAINER ──────────────────────────────────────────── */}
+      {/* ── MAIN CONTAINER ────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Top Header Bar */}
-        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-40">
-
+        <header
+          className="bg-white border-b px-6 flex items-center justify-between sticky top-0 z-40"
+          style={{ height: '64px', borderColor: 'var(--border)' }}
+        >
           {/* Global Search */}
-          <form onSubmit={handleGlobalSearch} className="w-full max-w-lg">
-            <div className="relative flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden px-3.5 focus-within:border-primary-400 focus-within:bg-white transition-all">
-              <Search size={16} className="text-slate-400 shrink-0" />
+          <form onSubmit={handleGlobalSearch} className="w-full max-w-lg" role="search">
+            <div
+              className="search-bar w-full px-4 transition-all"
+              style={{ gap: '10px' }}
+            >
+              <Search size={16} style={{ color: 'var(--text-subtle)', flexShrink: 0 }} />
               <input
-                type="text"
+                type="search"
                 id="global-search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search anything in natural language..."
-                className="w-full px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none"
+                className="flex-1 bg-transparent text-sm focus:outline-none"
+                style={{ color: 'var(--text-primary)' }}
+                aria-label="Global product search"
               />
               <button
                 type="submit"
                 id="global-search-btn"
-                className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg p-1.5 transition-colors shrink-0"
+                className="px-3 py-1.5 rounded-md text-white text-xs font-semibold shrink-0 transition-colors"
+                style={{ background: 'var(--primary)' }}
+                aria-label="Submit search"
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--primary-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--primary)'}
               >
-                <Search size={12} />
+                Search
               </button>
             </div>
           </form>
 
           {/* Right actions */}
-          <div className="flex items-center gap-3 ml-4">
+          <div className="flex items-center gap-2 ml-4 shrink-0">
             {/* Notifications */}
-            <button className="relative w-9 h-9 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-colors">
+            <button
+              id="notifications-btn"
+              className="relative w-9 h-9 flex items-center justify-center rounded-lg border transition-colors"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+              aria-label="Notifications"
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-secondary)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
               <Bell size={16} />
               <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-red-500" />
             </button>
 
             {/* Profile Avatar */}
-            <div
-              className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded-xl hover:bg-slate-50 transition-colors"
+            <button
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors"
               onClick={() => navigate('/profile')}
+              id="profile-btn"
+              aria-label="View profile"
+              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-secondary)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              <div className="w-8 h-8 rounded-full bg-primary-600 text-white text-xs font-bold flex items-center justify-center">
+              <div
+                className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center"
+                style={{ background: 'var(--primary)' }}
+              >
                 {activeCustomer.customer_name.charAt(0)}
               </div>
-              <span className="hidden sm:inline text-sm font-bold text-slate-700">
+              <span className="hidden sm:inline text-sm font-medium">
                 {activeCustomer.customer_name.split(' ')[0]}
               </span>
-              <ChevronDown size={12} className="text-slate-400" />
-            </div>
+              <ChevronDown size={12} style={{ color: 'var(--text-subtle)' }} />
+            </button>
 
             {/* Cart */}
             <Link
               to="/cart"
               id="cart-icon-btn"
-              className="relative w-9 h-9 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-colors"
+              className="relative w-9 h-9 flex items-center justify-center rounded-lg border transition-colors"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+              aria-label={`Shopping cart, ${cartCount} items`}
+              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--surface-secondary)'}
+              onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
             >
               <ShoppingCart size={16} />
               {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-primary-600 text-white text-[9px] font-black w-4.5 h-4.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white px-0.5">
+                <span
+                  className="absolute -top-1 -right-1 text-white text-[9px] font-bold min-w-[16px] h-4 rounded-full flex items-center justify-center px-0.5 border-2 border-white"
+                  style={{ background: 'var(--primary)' }}
+                >
                   {cartCount}
                 </span>
               )}
@@ -359,52 +491,59 @@ export function MainLayout({ children, showRightSidebar = false }: MainLayoutPro
         <div className="flex-1 flex min-w-0">
 
           {/* Main central content */}
-          <div className="flex-1 overflow-y-auto px-6 py-8 min-w-0">
+          <main
+            className="flex-1 overflow-y-auto min-w-0"
+            style={{ padding: '24px' }}
+          >
             {children}
-          </div>
+          </main>
 
-          {/* ── RIGHT SIDEBAR ─────────────────────────────────────────── */}
+          {/* ── RIGHT SIDEBAR ──────────────────────────────────────────── */}
           {showRightSidebar && (
-            <aside className="w-80 max-w-xs bg-white border-l border-slate-200 shrink-0 hidden xl:flex flex-col gap-5 p-5 h-screen sticky top-0 overflow-y-auto">
-
+            <aside
+              className="w-72 shrink-0 hidden xl:flex flex-col gap-5 p-5 h-screen sticky top-0 overflow-y-auto border-l"
+              style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+            >
               {/* AI Demo Lab Promo */}
-              <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 rounded-2xl border border-indigo-100 p-4 relative overflow-hidden shrink-0">
-                <div className="absolute right-1 -bottom-3 opacity-10">
-                  <Brain size={100} className="text-indigo-900" />
-                </div>
-                <span className="bg-primary-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider mb-2 inline-block">
-                  New
-                </span>
-                <h4 className="font-black text-slate-900 text-sm mb-1">AI Demo Lab</h4>
-                <p className="text-xs text-slate-500 leading-relaxed mb-3">
+              <div
+                className="rounded-xl p-4 relative overflow-hidden"
+                style={{ background: '#f3e8ff', border: '1px solid #e9d5ff' }}
+              >
+                <span className="ai-badge mb-2 inline-flex">New</span>
+                <h4 className="font-bold text-slate-900 text-sm mb-1">AI Demo Lab</h4>
+                <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--text-muted)' }}>
                   Upload a new product and see it become searchable & recommendable in minutes.
                 </p>
                 <Link
                   to="/demo-lab"
-                  className="inline-flex items-center gap-1 text-xs font-bold text-primary-600 hover:text-primary-700"
+                  className="inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                  style={{ color: '#7e22ce' }}
                 >
-                  Go to Demo Lab <ArrowRight size={12} />
+                  Go to Demo Lab <ArrowRight size={11} />
                 </Link>
               </div>
 
               {/* Your Activity */}
-              <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/40 shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                    <Activity size={13} className="text-primary-600 animate-pulse" />
+              <div className="card p-4">
+                <div className="card-header -mx-4 -mt-4 mb-3 px-4 py-2.5">
+                  <h4 className="section-title text-xs flex items-center gap-1.5">
+                    <Activity size={12} style={{ color: 'var(--primary)' }} className="animate-pulse" />
                     Your Activity
                   </h4>
                   <div className="flex items-center gap-2">
                     {(sessionContext.recent_views.length > 0 || sessionContext.recent_searches.length > 0) && (
                       <button
                         onClick={clearActivityHistory}
-                        className="text-[11px] font-bold text-slate-400 hover:text-red-500 transition-colors"
-                        title="Clear search and view history"
+                        className="text-[11px] font-medium transition-colors"
+                        style={{ color: 'var(--text-subtle)' }}
+                        title="Clear history"
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-subtle)'}
                       >
                         Clear
                       </button>
                     )}
-                    <Link to="/profile" className="text-xs font-bold text-primary-600 hover:text-primary-700">
+                    <Link to="/profile" className="text-xs font-semibold" style={{ color: 'var(--primary)' }}>
                       View All
                     </Link>
                   </div>
@@ -412,23 +551,23 @@ export function MainLayout({ children, showRightSidebar = false }: MainLayoutPro
                 <div className="space-y-2.5">
                   {sessionContext.recent_views.length > 0 ? (
                     sessionContext.recent_views.slice(0, 3).map((view, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-xs text-slate-600">
-                        <Eye size={12} className="text-blue-400 shrink-0 mt-0.5" />
+                      <div key={idx} className="flex items-start gap-2 text-xs">
+                        <Eye size={11} className="text-blue-400 shrink-0 mt-0.5" />
                         <div>
-                          <span className="font-semibold text-slate-700">Viewed product</span>
-                          <p className="text-[10px] text-slate-400 truncate max-w-[200px]">{view}</p>
+                          <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Viewed product</span>
+                          <p className="text-[10px] truncate max-w-[180px] font-mono" style={{ color: 'var(--text-subtle)' }}>{view}</p>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-slate-400 italic">No activity yet. Start browsing!</p>
+                    <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>No activity yet. Start browsing!</p>
                   )}
                   {sessionContext.recent_searches.slice(0, 2).map((s, idx) => (
-                    <div key={`s-${idx}`} className="flex items-start gap-2 text-xs border-t border-slate-100 pt-2">
-                      <Search size={12} className="text-amber-400 shrink-0 mt-0.5" />
+                    <div key={`s-${idx}`} className="flex items-start gap-2 text-xs pt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                      <Search size={11} className="text-amber-400 shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-semibold text-slate-700">Searched</span>
-                        <p className="text-[10px] text-slate-400 truncate max-w-[200px]">"{s}"</p>
+                        <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Searched</span>
+                        <p className="text-[10px] truncate max-w-[180px]" style={{ color: 'var(--text-subtle)' }}>"{s}"</p>
                       </div>
                     </div>
                   ))}
@@ -436,25 +575,32 @@ export function MainLayout({ children, showRightSidebar = false }: MainLayoutPro
               </div>
 
               {/* Trending Searches */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                    <TrendingUp size={13} className="text-primary-600" />
+              <div className="card p-4">
+                <div className="card-header -mx-4 -mt-4 mb-3 px-4 py-2.5">
+                  <h4 className="section-title text-xs flex items-center gap-1.5">
+                    <TrendingUp size={12} style={{ color: 'var(--primary)' }} />
                     Trending Searches
                   </h4>
-                  <button onClick={() => navigate('/catalog')} className="text-xs font-bold text-primary-600 hover:text-primary-700">
+                  <button
+                    onClick={() => navigate('/catalog')}
+                    className="text-xs font-semibold"
+                    style={{ color: 'var(--primary)' }}
+                  >
                     View All
                   </button>
                 </div>
-                <ul className="space-y-2">
+                <ul className="space-y-1.5">
                   {TRENDING_TERMS.map((term, index) => (
-                    <li key={index} className="flex items-center gap-3">
-                      <span className="text-[10px] font-black text-slate-300 w-4 text-right shrink-0">
+                    <li key={index} className="flex items-center gap-2.5">
+                      <span className="text-[10px] font-bold w-4 text-right shrink-0 font-mono" style={{ color: 'var(--text-subtle)' }}>
                         {index + 1}
                       </span>
                       <button
                         onClick={() => handleTrendingClick(term)}
-                        className="text-xs text-slate-600 hover:text-primary-600 hover:font-bold transition-all text-left"
+                        className="text-xs transition-all text-left hover:underline"
+                        style={{ color: 'var(--text-secondary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
                       >
                         {term}
                       </button>
@@ -463,23 +609,31 @@ export function MainLayout({ children, showRightSidebar = false }: MainLayoutPro
                 </ul>
               </div>
 
-              {/* Why Retail AI? */}
-              <div className="border-t border-slate-100 pt-4 space-y-3">
-                <h4 className="font-black text-slate-800 text-xs uppercase tracking-wider">Why Retail AI?</h4>
-                <div className="space-y-3 text-xs">
+              {/* Why Retail AI */}
+              <div className="card p-4">
+                <h4
+                  className="text-[10px] font-bold uppercase tracking-widest mb-3"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  Why Retail AI?
+                </h4>
+                <div className="space-y-3">
                   {[
-                    { icon: Brain, color: 'blue', title: 'Semantic Understanding', desc: 'Search naturally, like you talk' },
-                    { icon: Sparkles, color: 'purple', title: 'AI Recommendations', desc: 'Personalized for you' },
-                    { icon: Activity, color: 'green', title: 'Real-time Intelligence', desc: 'Always learning, always improving' },
-                    { icon: CheckCircle, color: 'orange', title: 'Enterprise Ready', desc: 'Secure, scalable, governed' },
-                  ].map(({ icon: Icon, color, title, desc }) => (
+                    { icon: Brain, color: '#0369a1', bg: '#e0f2fe', title: 'Semantic Search', desc: 'Understand intent, not just keywords' },
+                    { icon: Sparkles, color: '#7e22ce', bg: '#faf5ff', title: 'AI Recommendations', desc: 'Personalized for every session' },
+                    { icon: Activity, color: '#16a34a', bg: '#dcfce7', title: 'Real-time Intelligence', desc: 'Always learning from interactions' },
+                    { icon: CheckCircle, color: '#d97706', bg: '#fef3c7', title: 'Enterprise Ready', desc: 'Secure, scalable, governed' },
+                  ].map(({ icon: Icon, color, bg, title, desc }) => (
                     <div key={title} className="flex items-start gap-2.5">
-                      <div className={`w-6 h-6 rounded-full bg-${color}-50 text-${color}-600 flex items-center justify-center shrink-0`}>
-                        <Icon size={12} />
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                        style={{ background: bg }}
+                      >
+                        <Icon size={12} style={{ color }} />
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800">{title}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{desc}</p>
+                        <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-subtle)' }}>{desc}</p>
                       </div>
                     </div>
                   ))}

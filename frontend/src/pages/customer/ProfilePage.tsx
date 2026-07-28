@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Heart, Eye, GitCompare, MessageSquare,
   MapPin, CreditCard, User, Settings, FlaskConical, CheckCircle,
-  Search, RefreshCcw, Star, TrendingUp, Brain, ShoppingBag, Clock,
+  Search, RefreshCcw, Star, TrendingUp, Brain, ShoppingBag,
   ArrowRight, Plus,
 } from 'lucide-react';
 import { MainLayout } from '../../components/layout/MainLayout';
@@ -60,7 +60,7 @@ export function ProfilePage() {
   const [activeSection, setActiveSection] = useState('profile');
   const [customers,  setCustomers]  = useState<Customer[]>([]);
   const [aiContext,  setAiContext]   = useState<CustomerAIContext | null>(null);
-  const [interests,  setInterests]  = useState<string[]>(MOCK_INTERESTS);
+  const [interests,  _setInterests]  = useState<string[]>(MOCK_INTERESTS);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {

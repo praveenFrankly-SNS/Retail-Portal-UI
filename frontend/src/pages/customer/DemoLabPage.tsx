@@ -9,11 +9,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import {
-  FlaskConical, UploadCloud, Cpu, Search, Sparkles, CheckCircle,
+  FlaskConical, UploadCloud, Search, Sparkles, CheckCircle,
   AlertTriangle, Activity, Database, BarChart2, ArrowRight,
-  Brain, Layers, RefreshCcw, FileText, Star, ShoppingCart,
-  Play, Pause, Eye, ChevronRight, Package, Loader2,
-  Clock, Zap, Shield,
+  Brain, Layers, RefreshCcw, FileText,
+  Play, ChevronRight, Package, Loader2,
+  Zap,
 } from 'lucide-react';
 import { MainLayout } from '../../components/layout/MainLayout';
 import { useNavigate } from 'react-router-dom';
@@ -58,7 +58,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export function DemoLabPage() {
   const navigate = useNavigate();
-  const { activeCustomer } = useUserStore();
+  const { activeCustomer: _activeCustomer } = useUserStore();
 
   const [step, setStep] = useState<Step>(1);
 
@@ -77,7 +77,7 @@ export function DemoLabPage() {
   const [pipelineRunning, setPipelineRunning] = useState(false);
   const [pipelineDone,    setPipelineDone]    = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
-  const [currentStepIdx, setCurrentStepIdx]  = useState(-1);
+  const [_currentStepIdx, setCurrentStepIdx]  = useState(-1);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Step 4: Demo results
@@ -569,7 +569,7 @@ export function DemoLabPage() {
                 const Icon = s.icon;
                 const isRunning = s.status === 'running';
                 const isDone    = s.status === 'done';
-                const isWaiting = s.status === 'waiting';
+                const _isWaiting = s.status === 'waiting';
                 return (
                   <div key={s.id} className="flex gap-4">
                     {/* Line + dot */}

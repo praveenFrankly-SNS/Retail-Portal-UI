@@ -9,8 +9,7 @@
 import { useState, useEffect } from 'react';
 import {
   Sparkles, RefreshCcw, Star, ShoppingCart, Package, Layers,
-  Clock, History, Brain, Shield, ChevronRight, Activity,
-  TrendingUp, AlertCircle, Info,
+  Clock, History, Brain, TrendingUp, Activity,
 } from 'lucide-react';
 import { MainLayout } from '../../components/layout/MainLayout';
 import { RecommendationRow } from '../../components/recommendation/RecommendationRow';
@@ -28,7 +27,7 @@ type SubNavItem = {
   icon: React.ElementType;
 };
 
-const LEFT_NAV: SubNavItem[] = [
+const _LEFT_NAV: SubNavItem[] = [
   { id: 'overview',      label: 'Overview',             icon: Star },
   { id: 'home',          label: 'Recommended For You',  icon: Sparkles },
   { id: 'similar',       label: 'Similar Products',     icon: Layers },
@@ -40,7 +39,7 @@ const LEFT_NAV: SubNavItem[] = [
   { id: 'context',       label: 'AI Context',           icon: Brain },
 ];
 
-function ConfidenceRing({ pct }: { pct: number }) {
+function _ConfidenceRing({ pct }: { pct: number }) {
   const color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
   const textColor = pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-amber-600' : 'text-red-500';
   const label = pct >= 80 ? 'High Confidence' : pct >= 50 ? 'Medium Confidence' : 'Low Confidence';
@@ -76,9 +75,9 @@ export function RecommendationsPage() {
   const { activeCustomer, sessionContext } = useUserStore();
   const navigate = useNavigate();
 
-  const [activeSection, setActiveSection] = useState('home');
+  const [_activeSection, _setActiveSection] = useState('home');
   const [selectedProduct, setSelectedProduct] = useState<RecommendedProduct | null>(null);
-  const [aiContext, setAiContext]   = useState<CustomerAIContext | null>(null);
+  const [_aiContext, setAiContext]   = useState<CustomerAIContext | null>(null);
 
   const [homeRecs,       setHomeRecs]        = useState<RecommendedProduct[]>([]);
   const [similarRecs,    setSimilarRecs]      = useState<RecommendedProduct[]>([]);
@@ -116,9 +115,9 @@ export function RecommendationsPage() {
     fetchContext();
   }, [activeCustomer.customer_id, sessionContext]);
 
-  const confidencePct = 92;
+  const _confidencePct = 92;
 
-  const whyFactors = [
+  const _whyFactors = [
     { icon: TrendingUp, text: 'Viewed 5 headphones in the last 7 days', sub: 'You showed interest in noise cancelling headphones', color: 'text-blue-600 bg-blue-50' },
     { icon: ShoppingCart, text: 'Purchased Bose Earbuds II recently', sub: 'You prefer premium audio quality', color: 'text-green-600 bg-green-50' },
     { icon: Activity, text: 'Frequently searches for audio equipment', sub: 'You search about 2× more than average users', color: 'text-purple-600 bg-purple-50' },

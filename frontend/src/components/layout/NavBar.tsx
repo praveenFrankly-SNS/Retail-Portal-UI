@@ -7,7 +7,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Search, ShoppingCart, Bell, ChevronDown, Home,
-  Sparkles, LayoutGrid, Star, FlaskConical, Info, Database
+  Sparkles, LayoutGrid, Star, FlaskConical, Info
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useCartStore } from '../../store/cartStore';
@@ -23,7 +23,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', path: '/', icon: Home },
+  { label: 'Home', path: '/home', icon: Home },
   { label: 'Product Search', path: '/search', icon: Search },
   { label: 'Catalog', path: '/catalog', icon: LayoutGrid },
   { label: 'Recommendations', path: '/recommendations', icon: Star },

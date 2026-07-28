@@ -6,7 +6,7 @@
 // and AI-generated explanation text.
 // ============================================================
 
-import { X, Star, Brain, ShieldCheck, TrendingUp, Link2, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react';
+import { X, Star, Brain, TrendingUp, Link2, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { RecommendedProduct } from '../../types/recommendation';
 
@@ -51,7 +51,6 @@ function ConfidenceGauge({ score }: { score: number }) {
   const pct = Math.round(score * 100);
   const level = pct >= 80 ? 'High' : pct >= 50 ? 'Medium' : 'Low';
   const color = pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-amber-600' : 'text-red-500';
-  const trackColor = pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500';
 
   return (
     <div className="flex items-center gap-3">
