@@ -1,5 +1,5 @@
 """
-FastAPI main application entry point
+FastAPI main application entry point — trigger reload config env 4
 """
 import os
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"

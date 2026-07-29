@@ -59,7 +59,7 @@ async def detailed_health_check():
         
         # Determine overall status
         all_healthy = all(
-            status == "healthy"
+            str(status).startswith("healthy")
             for status in databricks_health.values()
         )
         

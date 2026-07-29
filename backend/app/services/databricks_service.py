@@ -397,11 +397,7 @@ class DatabricksService:
                 "discount_percentage",
                 "rating",
                 "rating_count",
-                "about_product",
-                "review_title",
-                "review_content",
                 "img_link",
-                "image_url",
                 "product_link",
             ]
         else:
@@ -487,7 +483,7 @@ class DatabricksService:
     async def get_product_details(
         self, product_ids: List[str], dataset: str = "amazon"
     ) -> Dict[str, Dict[str, Any]]:
-        """Fetch full product details from the Silver table via SQL Warehouse."""
+        """Fetch full product details from the Silver/Gold table via SQL Warehouse."""
         if not product_ids:
             return {}
 
@@ -496,32 +492,53 @@ class DatabricksService:
             return {}
 
         ids_str = ", ".join(clean_ids)
-        sql = f"""
-            SELECT 
-                p.product_id,
-                p.product_name,
-                p.description,
-                p.actual_price,
-                p.discounted_price,
-                p.discount_percentage,
-                p.average_rating,
-                p.rating_count,
-                p.image_url,
-                p.status,
-                b.brand_name,
-                c.full_path as category_path,
-                i.total_stock,
-                CASE WHEN i.total_stock > 0 THEN 'In Stock' ELSE 'Out of Stock' END as availability_status
-            FROM {settings.product_table} p
-            LEFT JOIN {settings.brand_table} b ON p.brand_id = b.brand_id
-            LEFT JOIN {settings.category_table} c ON p.category_id = c.category_id
-            LEFT JOIN (
-                SELECT product_id, SUM(stock_quantity) as total_stock 
-                FROM {settings.inventory_table} 
-                GROUP BY product_id
-            ) i ON p.product_id = i.product_id
-            WHERE p.product_id IN ({ids_str})
-        """
+
+        if dataset == "amazon":
+            sql = f"""
+                SELECT 
+                    product_id,
+                    product_name,
+                    search_document as description,
+                    actual_price,
+                    discounted_price,
+                    discount_percentage,
+                    rating as average_rating,
+                    rating_count,
+                    img_link as image_url,
+                    'In Stock' as availability_status,
+                    'Generic' as brand_name,
+                    category as category_path,
+                    100 as total_stock
+                FROM `product_search_dev`.gold.amazon_product_catalog
+                WHERE product_id IN ({ids_str})
+            """
+        else:
+            sql = f"""
+                SELECT 
+                    p.product_id,
+                    p.product_name,
+                    p.description,
+                    p.actual_price,
+                    p.discounted_price,
+                    p.discount_percentage,
+                    p.average_rating,
+                    p.rating_count,
+                    p.image_url,
+                    p.status,
+                    b.brand_name,
+                    c.full_path as category_path,
+                    i.total_stock,
+                    CASE WHEN i.total_stock > 0 THEN 'In Stock' ELSE 'Out of Stock' END as availability_status
+                FROM {settings.product_table} p
+                LEFT JOIN {settings.brand_table} b ON p.brand_id = b.brand_id
+                LEFT JOIN {settings.category_table} c ON p.category_id = c.category_id
+                LEFT JOIN (
+                    SELECT product_id, SUM(stock_quantity) as total_stock 
+                    FROM {settings.inventory_table} 
+                    GROUP BY product_id
+                ) i ON p.product_id = i.product_id
+                WHERE p.product_id IN ({ids_str})
+            """
 
         rows = await asyncio.get_event_loop().run_in_executor(None, _run_sql, sql)
 

@@ -5,13 +5,14 @@
 // Wraps in the complete unified MainLayout.
 // ============================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Grid3X3, List, Search as SearchIcon, SlidersHorizontal } from 'lucide-react';
 import { MainLayout } from '../../components/layout/MainLayout';
 import { ProductCard } from '../../components/product/ProductCard';
 import { Pagination } from '../../components/common/Pagination';
 import { getProducts, getCategories } from '../../api/productApi';
+import { useCatalogStore, buildCacheKey } from '../../store/catalogStore';
 import type { Product, Category } from '../../types/product';
 
 const SORT_OPTIONS = ['Popularity', 'Price: Low to High', 'Price: High to Low', 'Rating'];
@@ -27,7 +28,8 @@ function formatCategoryTabName(rawName?: string): string {
 export function CatalogPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+  const { getCachedPage, setCachedPage, getCachedCategories, setCachedCategories } = useCatalogStore();
+
   const initialCategory = searchParams.get('category') || 'All';
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   
@@ -44,20 +46,25 @@ export function CatalogPage() {
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Load categories
+  // Load categories — cached for 5 min
   useEffect(() => {
+    const cached = getCachedCategories();
+    if (cached) {
+      setCategories(cached);
+      return;
+    }
     getCategories()
       .then((cats) => {
         const cleanCats = (cats || []).filter((c) => formatCategoryTabName(c.name) !== '');
+        setCachedCategories(cleanCats);
         setCategories(cleanCats);
       })
       .catch(err => console.warn(err));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load products list based on filters/pagination
-  useEffect(() => {
-    setLoading(true);
-    getProducts({
+  // Load products — check memory cache first; only hit API on cache miss
+  const fetchProducts = useCallback(() => {
+    const params = {
       category: selectedCategory === 'All' ? undefined : selectedCategory,
       brand: selectedBrand || undefined,
       max_price: priceLimit,
@@ -65,15 +72,34 @@ export function CatalogPage() {
       sort: sortBy,
       page: currentPage,
       page_size: 12,
-    })
+    };
+    const key = buildCacheKey({ ...params, category: selectedCategory });
+    const cached = getCachedPage(key);
+    if (cached) {
+      setProducts(cached.products);
+      setTotalCount(cached.totalCount);
+      setTotalPages(cached.totalPages);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    getProducts(params)
       .then((res) => {
+        setCachedPage(key, {
+          products: res.products,
+          totalCount: res.total_count,
+          totalPages: res.total_pages,
+          fetchedAt: Date.now(),
+        });
         setProducts(res.products);
         setTotalCount(res.total_count);
         setTotalPages(res.total_pages);
       })
       .catch((err) => console.warn(err))
       .finally(() => setLoading(false));
-  }, [selectedCategory, selectedBrand, priceLimit, minRating, sortBy, currentPage]);
+  }, [selectedCategory, selectedBrand, priceLimit, minRating, sortBy, currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   const brandsList = ['Twelve South', 'Logitech', 'Sony', 'Ugreen', 'Apple', 'BenQ', 'ErgoTune'];
 

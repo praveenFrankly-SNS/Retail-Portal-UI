@@ -213,7 +213,7 @@ class SearchService:
         product_ids = [r.get("product_id") for r in page_results if r.get("product_id")]
 
         products_start = time.time()
-        product_details = await self.databricks.get_product_details(product_ids)
+        product_details = await self.databricks.get_product_details(product_ids, dataset=dataset)
         products_time_ms = int((time.time() - products_start) * 1000)
 
         # Merge vector scores with SQL product details

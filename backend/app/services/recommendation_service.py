@@ -144,13 +144,21 @@ class RecommendationService:
                 gold_schema=gold_schema
             )
 
-            # Retrieve ultra-fast live session context from Redis
+            # Retrieve live session context from Redis (server-side truth)
             redis_context = session_service.get_customer_context(customer_id)
+
+            # Frontend session_context takes priority (it has the freshest view/cart data).
+            # Redis fills gaps. The engine expects "cart_product_ids" (not "cart").
+            frontend = session_context or {}
             merged_context = {
-                "recent_searches": redis_context.get("recent_searches", []),
-                "recent_views": redis_context.get("recent_views", []),
-                "cart": redis_context.get("cart", []),
-                **(session_context or {})
+                "recent_searches": frontend.get("recent_searches") or redis_context.get("recent_searches", []),
+                "recent_views": frontend.get("recent_views") or redis_context.get("recent_views", []),
+                # Frontend sends cart_product_ids; Redis stores as "cart" — unify to cart_product_ids
+                "cart_product_ids": (
+                    frontend.get("cart_product_ids")
+                    or frontend.get("cart")
+                    or redis_context.get("cart", [])
+                ),
             }
 
             logger.info("Executing Phase 7 recommendation pipeline", customer_id=customer_id, surface=surface)
